@@ -1,0 +1,2498 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ひとまわ</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ひとまわ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     デザイン方針：白ベース × 大きな角丸 × イエローアクセント
+     （コーポレートサイト風のクリーンなスタイル）
+     ============================================================ */
+  :root{
+    --bg:#f4f5f4;            /* ページ背景（ごく薄いグレー） */
+    --surface:#ffffff;       /* パネル・カード面 */
+    --surface-sub:#f7f8f7;   /* 一段沈んだ面 */
+    --ink:#1c1c22;           /* メインテキスト（濃紺寄りの黒） */
+    --ink-soft:#55555e;      /* サブテキスト */
+    --muted:#9a9aa3;         /* 補助テキスト */
+    --line:#e6e7e6;          /* 罫線 */
+    --accent:#ffcb05;        /* アクセントイエロー */
+    --accent-deep:#f0bb00;   /* 押下時のイエロー */
+    --accent-ink:#2a2a33;    /* イエロー上の文字色 */
+    --danger:#d95555;
+    --shadow-soft:0 2px 12px rgba(28,28,34,.07);
+    --shadow-float:0 10px 30px rgba(28,28,34,.14);
+    --radius-l:22px;
+    --radius-m:14px;
+    --radius-s:9px;
+    --radius-card:4px;   /* カードの角：わずかに丸める */
+    --deck-color:#ffcb05;   /* 初期はテーマカラーの黄色 */
+    --card-w:58px;
+    --card-h:81px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; scrollbar-width:none; touch-action:manipulation;}
+  *::-webkit-scrollbar{display:none;}
+  html,body{height:100%;}
+  html{overflow:hidden; overscroll-behavior:none;}
+  body{
+    margin:0;
+    position:fixed; inset:0;           /* ページ自体を固定し、上下バウンス・引っ張り更新を防ぐ */
+    overflow:hidden;
+    overscroll-behavior:none;
+    background:var(--bg);
+    font-family:"Noto Sans JP",-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Arial,sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:calc(10px + env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom));
+    color:var(--ink);
+    user-select:none;
+  }
+  .phone{
+    width:100%;
+    max-width:420px;
+    height:100%;
+    background:var(--surface);
+    border-radius:var(--radius-l);
+    padding:16px 14px 16px;
+    box-shadow:var(--shadow-soft);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    position:relative;
+    overflow:hidden;
+    min-height:0;
+  }
+
+  .play-deck-name{
+    display:none; font-size:10px; font-weight:700; color:var(--ink-soft);
+    letter-spacing:.06em; margin-bottom:-4px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  header{position:relative; display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:nowrap;}
+  #headerTitleBlock{min-width:0; margin-right:auto;}
+  h1{
+    font-size:16px; letter-spacing:.02em; margin:0; color:var(--ink); font-weight:800;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .subtitle{font-size:9px; letter-spacing:.1em; color:var(--muted); margin-top:3px; font-weight:500;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .toolbar-btns{display:flex; gap:6px; flex-wrap:nowrap; align-items:center; overflow-x:auto; min-width:0;}
+  .toolbar-btns .mini-btn{flex-shrink:0; white-space:nowrap;}
+  /* プレイ画面のバーは4ボタンを画面幅に均等割りして必ず収める */
+  #playBtns{flex:1; overflow:visible;}
+  #playBtns .mini-btn{flex:1 1 0; min-width:0; padding:10px 4px; font-size:11px; text-align:center;}
+  /* 一つ戻るボタン：カウントバッジと同じ黄色、アイコンに合わせたコンパクトな円形 */
+  #playBtns #btnUndo{
+    flex:0 0 auto; width:40px; height:40px; padding:0;
+    border-radius:999px; background:var(--accent); border-color:var(--accent);
+    color:var(--accent-ink); font-size:19px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #playBtns #btnUndo:active{background:var(--accent-deep); border-color:var(--accent-deep);}
+  .mini-btn{
+    background:var(--surface); border:1.5px solid var(--line); color:var(--ink);
+    font-size:12px; font-weight:700; padding:10px 15px; border-radius:999px; letter-spacing:.03em; cursor:pointer;
+    transition:background .12s, border-color .12s;
+  }
+  .mini-btn:active{background:var(--accent); border-color:var(--accent);}
+  .mini-btn:disabled{opacity:.35; cursor:default;}
+  .gear-btn{
+    flex-shrink:0;
+    width:42px; height:42px; border-radius:999px; border:1.5px solid #2f6fce;
+    background:#2f6fce; color:#fff; font-size:17px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; padding:0;
+    box-shadow:0 3px 10px rgba(47,111,206,.3);
+  }
+  .gear-btn:active{background:#265caf; border-color:#265caf;}
+
+  .counts{display:flex; gap:12px; font-size:10px; color:var(--ink-soft); letter-spacing:.04em; position:relative; font-weight:600;}
+  .counts b{color:var(--ink); font-weight:800; background:var(--accent); padding:0 7px; border-radius:999px; margin-left:2px;}
+
+  .screen{display:none; flex-direction:column; gap:12px; flex:1; min-height:0;}
+  .screen.active{display:flex;}
+
+  /* ---------- build screen ---------- */
+  .build-scroll{
+    flex:1; min-height:0; overflow-y:auto; background:var(--surface-sub); border:1px solid var(--line);
+    border-radius:var(--radius-m); padding:12px;
+  }
+  .lib-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, 70px); /* 収まる列数ぶんの枠を作る */
+    gap:12px;
+    justify-content:center; /* 枠のまとまり自体は中央、カードは左端の枠から埋まる */
+  }
+  .lib-empty{grid-column:1 / -1;}
+  .lib-item{
+    width:70px; display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .lib-thumb-wrap{position:relative; width:58px; height:81px;}
+  .lib-thumb{width:100%; height:100%; border-radius:var(--radius-card); background-size:cover; background-position:center;
+    box-shadow:var(--shadow-soft);}
+  .lib-count{
+    position:absolute; top:-7px; right:-7px; background:var(--accent); color:var(--accent-ink);
+    font-size:10px; font-weight:800; min-width:19px; height:19px; border-radius:999px;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(28,28,34,.2);
+  }
+  .lib-ctrl{display:flex; gap:5px;}
+  .lib-ctrl button{
+    width:30px; height:28px; border-radius:8px; border:1.5px solid var(--line); background:var(--surface);
+    color:var(--ink); font-size:13px; font-weight:700; cursor:pointer; line-height:1;
+  }
+  .lib-ctrl button:active{background:var(--accent); border-color:var(--accent);}
+  .lib-remove{font-size:10px; color:var(--muted); background:none; border:none; text-decoration:underline; cursor:pointer; padding:3px 0;}
+  .build-section-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  #libGrid{min-height:52%;} /* 追加デッキのセクションが常に半分より下から始まるように */
+  .build-section-head span{font-size:12px; font-weight:800; color:var(--ink); letter-spacing:.08em;}
+  .section-add-btn{font-size:11px; padding:8px 12px;}
+  .lib-grid.reordering .lib-ctrl,
+  .lib-grid.reordering .lib-remove{display:none;}
+  .lib-grid.reordering .lib-item{touch-action:none; cursor:grab;}
+  .lib-grid.reordering .lib-thumb{outline:2px dashed var(--accent-deep); outline-offset:2px;}
+  #btnReorder.active{background:var(--accent); border-color:var(--accent);}
+  .lib-empty{
+    padding:32px 12px; text-align:center; font-size:11px; color:var(--ink-soft); line-height:1.9;
+  }
+
+  .build-footer{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--surface-sub); border:1px solid var(--line); border-radius:var(--radius-m); padding:12px 14px;
+  }
+  .build-footer .total{font-size:11px; color:var(--ink-soft); font-weight:600;}
+  .build-footer .total b{color:var(--ink); font-size:16px; font-weight:800;}
+
+  /* ---------- play screen ---------- */
+  .field{
+    position:relative;
+    z-index:0; /* 内部カードの重なり順をフィールド内に閉じ込め、ポップアップ等と競合させない */
+    isolation:isolate;
+    flex:1;
+    min-height:210px;
+    background:var(--surface-sub);
+    border-radius:var(--radius-m);
+    border:1px solid var(--line);
+    overflow:hidden;
+    touch-action:none;
+  }
+  .field-label{
+    position:absolute; top:8px; left:12px; font-size:8px; letter-spacing:.22em; font-weight:800;
+    color:var(--muted); pointer-events:none;
+  }
+  .empty-hint{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:20px; font-size:11px; color:var(--muted); line-height:1.8;
+    pointer-events:none;
+  }
+
+  .tray{display:flex; gap:8px; align-items:flex-end;}
+  .tray .stack-zone:first-child{margin-left:-8px;}
+
+  .stack-zone{
+    width:58px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:5px;
+  }
+  .stack-visual{ position:relative; width:var(--card-w); height:var(--card-h); touch-action:none; }
+  @keyframes deck-shuffle{
+    0%{transform:translate(0,0) rotate(0deg);}
+    15%{transform:translate(-3px,1px) rotate(-4deg);}
+    30%{transform:translate(3px,-2px) rotate(4deg);}
+    45%{transform:translate(-2px,2px) rotate(-3deg);}
+    60%{transform:translate(2px,-1px) rotate(3deg);}
+    75%{transform:translate(-1px,1px) rotate(-2deg);}
+    100%{transform:translate(0,0) rotate(0deg);}
+  }
+  .stack-visual.shuffling{animation:deck-shuffle .5s ease-in-out;}
+  .stack-label{font-size:8px; letter-spacing:.14em; color:var(--muted); font-weight:700;}
+
+  .card{
+    width:var(--card-w); height:var(--card-h);
+    border-radius:var(--radius-card);
+    background-size:cover; background-position:center;
+    /* 白枠は外側に描く（画像の描画領域を縮めないため） */
+    box-shadow:0 0 0 1.5px #ffffff, 0 2px 8px rgba(28,28,34,.16);
+    cursor:grab;
+  }
+  .card.face-down, .card-back{
+    background-color:var(--deck-color);
+    background-image:linear-gradient(150deg, rgba(255,255,255,.22), rgba(0,0,0,.1));
+    box-shadow:0 2px 8px rgba(28,28,34,.16), inset 0 0 0 3px rgba(255,255,255,.35);
+  }
+  .card-back{
+    width:var(--card-w); height:var(--card-h); border-radius:var(--radius-card);
+  }
+
+  .deck-stack .card-back:nth-child(1){position:absolute; top:0; left:0; z-index:3;}
+  .deck-stack .card-back:nth-child(2){position:absolute; top:-2px; left:2px; z-index:2; opacity:.8;}
+  .deck-stack .card-back:nth-child(3){position:absolute; top:-4px; left:4px; z-index:1; opacity:.5;}
+  .stack-count{
+    position:absolute; bottom:4px; right:4px; z-index:5;
+    background:var(--ink); color:#fff; font-size:9px;
+    padding:1px 6px; border-radius:999px; font-weight:700;
+  }
+  .stack-empty{
+    width:100%; height:100%; border:1.5px dashed var(--line); border-radius:var(--radius-card);
+    display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--muted);
+    background:var(--surface-sub);
+  }
+
+  .hand-zone{
+    flex:1; min-width:0;
+    background:var(--surface-sub); border-radius:var(--radius-m); border:1px solid var(--line);
+    padding:9px 11px 7px; display:flex; flex-direction:column; gap:5px;
+  }
+  .hand-zone .stack-label{margin-left:2px;}
+  .hand-row{
+    display:flex; overflow-x:auto;
+    /* 上パディング＋同量のネガティブマージンで、浮いたカードがラベルの上に重なれる領域を確保 */
+    padding:26px 2px 4px; margin-top:-26px;
+    min-height:calc(var(--card-h) + 32px); /* パディング込みでカード1枚分を常に確保 */
+  }
+  .hand-row .card{flex-shrink:0; transition:transform .12s; position:relative;}
+  .hand-row .card.selected{transform:translateY(-6px); z-index:5;}
+
+  .field .card{position:absolute; touch-action:none;}
+  .select-rect{
+    position:absolute; z-index:400; border:2px dashed var(--accent-deep);
+    background:rgba(255,203,5,.14); border-radius:6px; pointer-events:none;
+  }
+  .field .card.selected{outline:3px solid var(--accent); outline-offset:1px;}
+  .field .card.dragging{cursor:grabbing;}
+
+  .popover{
+    position:fixed; z-index:600; background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius-m); padding:7px; display:flex; flex-direction:column; gap:2px;
+    box-shadow:var(--shadow-float); min-width:160px;
+  }
+  .popover button{
+    background:transparent; border:none; color:var(--ink); text-align:left;
+    font-size:13px; font-weight:600; padding:12px 14px; border-radius:var(--radius-s); cursor:pointer; letter-spacing:.02em;
+  }
+  .popover button:active{background:var(--accent);}
+  .popover button.danger{color:var(--danger);}
+
+  .big-btn{
+    background:var(--accent);
+    color:var(--accent-ink); border:none; font-weight:800; font-size:14px; letter-spacing:.04em;
+    padding:15px 28px; border-radius:999px; cursor:pointer; box-shadow:0 4px 14px rgba(240,187,0,.35);
+    transition:background .12s;
+  }
+  .big-btn:active{background:var(--accent-deep);}
+  .big-btn:disabled{opacity:.35; cursor:default; box-shadow:none;}
+  .group-ghost{background:none !important; box-shadow:none !important; border:none;}
+  .group-ghost .g{
+    position:absolute; inset:0; border-radius:var(--radius-card);
+    background-size:cover; background-position:center;
+    box-shadow:0 0 0 1.5px #ffffff, var(--shadow-float);
+  }
+  .group-ghost .stack-count{z-index:10;}
+  .flying-ghost{
+    position:fixed; z-index:999; pointer-events:none; width:var(--card-w); height:var(--card-h);
+    border-radius:var(--radius-card); background-size:cover; background-position:center;
+    box-shadow:0 0 0 1.5px #ffffff, var(--shadow-float); transform:scale(1.08);
+  }
+
+  /* ---------- modals ---------- */
+  .confirm-overlay{
+    position:fixed; inset:0; z-index:500; background:rgba(28,28,34,.4);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .confirm-box{
+    background:var(--surface); border:none; border-radius:var(--radius-l);
+    padding:22px 20px; max-width:300px; text-align:center;
+    box-shadow:var(--shadow-float);
+  }
+  .confirm-box p{font-size:12px; line-height:1.8; color:var(--ink); margin:0 0 16px; font-weight:600; white-space:pre-line;}
+  .howto-text, .lib-empty, .deck-list-empty, .empty-hint{text-wrap:pretty;}
+  .confirm-actions{display:flex; gap:8px; justify-content:center;}
+  .confirm-actions button{
+    flex:1; padding:13px 12px; border-radius:999px; font-size:13px; font-weight:800;
+    border:1.5px solid var(--line); cursor:pointer; letter-spacing:.03em;
+  }
+  .confirm-cancel{background:var(--surface); color:var(--ink);}
+  .confirm-ok{background:var(--accent); color:var(--accent-ink); border-color:transparent;}
+  .confirm-ok:active{background:var(--accent-deep);}
+  .num-input{
+    width:64px; text-align:center;
+    background:var(--surface-sub); border:1.5px solid var(--line); border-radius:var(--radius-s);
+    color:var(--ink); font-size:18px; font-weight:700; padding:11px 4px;
+    -moz-appearance:textfield; appearance:textfield;
+  }
+  .num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button{
+    -webkit-appearance:none; margin:0;
+  }
+  .num-input-row{display:flex; gap:6px; justify-content:center; align-items:center; margin:0 0 16px;}
+  .all-btn{
+    background:var(--surface); border:1.5px solid var(--line); color:var(--ink);
+    font-size:13px; font-weight:700; padding:12px 13px; border-radius:999px; cursor:pointer; letter-spacing:.05em;
+    min-width:46px;
+  }
+  .all-btn:active{background:var(--accent); border-color:var(--accent);}
+  .viewer-overlay{background:rgba(28,28,34,.22); align-items:flex-start; padding-top:60px;}
+  .viewer-box{width:302px; max-width:92vw;}
+  .viewer-grid{
+    display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;
+    max-height:312px; /* カード4列×3段＝12枚ぶん。超えたらスクロール */
+    overflow-y:auto;
+  }
+  .viewer-grid .card{touch-action:none;}
+  .viewer-item{display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .viewer-order{font-size:9px; color:var(--muted); font-weight:600;}
+  .viewer-grid .card.selected{outline:3px solid var(--accent); outline-offset:1px;}
+  .viewer-wide-btn{display:block; width:100%; margin-top:10px;}
+  .viewer-close-btn{
+    background:var(--accent); color:var(--accent-ink);
+    border:1.5px solid transparent; border-radius:999px;
+    font-size:13px; font-weight:800; padding:13px 12px;
+    cursor:pointer; letter-spacing:.03em;
+  }
+  .viewer-close-btn:active{background:var(--accent-deep);}
+
+  /* ---------- settings ---------- */
+  .settings-scroll{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
+    background:var(--surface-sub); border:1px solid var(--line); border-radius:var(--radius-m); padding:16px 14px;}
+  .settings-scroll > *{flex-shrink:0;}
+  .settings-section-title{font-size:10px; letter-spacing:.2em; color:var(--muted); font-weight:800;}
+  .swatch-grid{display:flex; flex-wrap:wrap; gap:10px;}
+  .swatch{
+    width:44px; height:44px; border-radius:999px; cursor:pointer;
+    box-shadow:0 2px 6px rgba(28,28,34,.15); border:3px solid transparent;
+  }
+  .swatch.selected{border-color:var(--ink);}
+  .settings-preview{display:flex; align-items:center; gap:14px; margin-top:6px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); padding:12px;}
+  .settings-preview .card-back{width:58px; height:81px; border-radius:var(--radius-card);}
+  .settings-preview p{font-size:10px; color:var(--ink-soft); line-height:1.7; margin:0; font-weight:600;}
+  .custom-color-row{display:flex; align-items:center; gap:10px; margin-top:4px;}
+  .custom-color-row input[type=color]{
+    width:44px; height:34px; border:1.5px solid var(--line); border-radius:var(--radius-s);
+    background:var(--surface); cursor:pointer; padding:2px;}
+  .custom-color-row label{font-size:10px; color:var(--ink-soft); letter-spacing:.05em; font-weight:600;}
+  .settings-back{margin-top:auto;}
+  .settings-nav{display:flex; gap:8px;}
+  .setting-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m);
+    padding:12px 14px;
+  }
+  .setting-row > span{font-size:12px; font-weight:700; color:var(--ink);}
+  .num-ctrl{display:flex; align-items:center; gap:10px;}
+  .num-ctrl b{font-size:16px; font-weight:800; color:var(--ink); min-width:22px; text-align:center;}
+  .num-ctrl .mini-btn{padding:8px 13px;}
+  #skipConfirmToggle.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+
+  /* ---------- title screen ---------- */
+  .title-center{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    text-align:center;
+    background:
+      radial-gradient(circle at 82% 16%, rgba(255,203,5,.5) 0 92px, transparent 93px),
+      radial-gradient(circle at 12% 88%, rgba(255,203,5,.22) 0 62px, transparent 63px),
+      var(--surface);
+    border-radius:var(--radius-m);
+  }
+  .title-logo{
+    font-size:46px; font-weight:900; color:var(--ink); letter-spacing:.14em;
+    position:relative;
+  }
+  .title-logo::after{
+    content:""; display:block; width:56px; height:8px; border-radius:999px;
+    background:var(--accent); margin:10px auto 0;
+  }
+  .title-tagline{font-size:10px; color:var(--ink-soft); letter-spacing:.14em; margin-bottom:20px; font-weight:600;}
+  .title-menu{display:flex; flex-direction:column; gap:10px; width:210px;}
+  .title-menu .big-btn{width:100%;}
+
+  /* ---------- howto ---------- */
+  .sub-btn{
+    background:var(--surface); color:var(--ink);
+    border:1.5px solid var(--line); box-shadow:none;
+  }
+  .sub-btn:active{background:var(--accent); border-color:var(--accent);}
+  .howto-scroll{
+    flex:1; min-height:0; overflow-y:auto; background:var(--surface-sub); border:1px solid var(--line);
+    border-radius:var(--radius-m); padding:14px 12px; display:flex; flex-direction:column; gap:10px;
+  }
+  .howto-step{
+    display:flex; gap:14px; align-items:flex-start;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m);
+    padding:16px 15px; box-shadow:var(--shadow-soft);
+  }
+  .howto-num{
+    flex-shrink:0; width:34px; height:34px; border-radius:999px;
+    background:var(--accent); color:var(--accent-ink);
+    font-size:16px; font-weight:900;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .howto-body{min-width:0;}
+  .howto-title{font-size:14px; font-weight:800; color:var(--ink); margin-bottom:5px;}
+  .howto-text{font-size:11.5px; line-height:1.9; color:var(--ink-soft); font-weight:500;}
+
+  /* ---------- deck select ---------- */
+  .deck-list-scroll{
+    flex:1; min-height:0; overflow-y:auto; background:var(--surface-sub); border:1px solid var(--line);
+    border-radius:var(--radius-m); padding:10px;
+  }
+  .deck-list{display:flex; flex-direction:column; gap:8px;}
+  .deck-item{
+    display:flex; align-items:center; gap:18px; padding:20px 20px;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m);
+    cursor:pointer; box-shadow:var(--shadow-soft);
+    transition:border-color .12s;
+  }
+  .deck-item:active{border-color:var(--accent); background:#fffdf2;}
+  .deck-item-thumb{
+    width:68px; height:94px; border-radius:var(--radius-card); background-size:cover; background-position:center;
+    box-shadow:0 3px 8px rgba(28,28,34,.18); flex-shrink:0;
+  }
+  .deck-item-info{flex:1; min-width:0;}
+  .deck-item-name{font-size:18px; color:var(--ink); font-weight:800;}
+  .deck-item-count{font-size:12px; color:var(--muted); margin-top:5px; font-weight:600;}
+  .deck-item-actions{display:flex; gap:8px; margin-top:10px;}
+  .deck-action-btn{font-size:11px; padding:9px 14px;}
+  .deck-delete-btn{color:var(--danger); border-color:#f0d5d5;}
+  .deck-delete-btn:active{background:#fbeaea; border-color:var(--danger);}
+  .deck-item-locked{opacity:.92; background:var(--surface-sub); border-style:dashed;}
+  .deck-lock-thumb{
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+    background:var(--surface); border:1.5px dashed var(--line); box-shadow:none;
+  }
+  .deck-buy-btn{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .deck-buy-btn:active{background:var(--accent-deep);}
+  .slot-status{
+    text-align:center; font-size:10px; color:var(--muted); font-weight:700;
+    letter-spacing:.06em; padding:10px 0 2px;
+  }
+  .deck-list-empty{
+    padding:36px 12px; text-align:center; font-size:11px; color:var(--ink-soft); line-height:1.9;
+  }
+  .text-input{
+    width:100%; margin:0 0 16px; text-align:center;
+    background:var(--surface-sub); border:1.5px solid var(--line); border-radius:var(--radius-s);
+    color:var(--ink); font-size:16px; font-weight:700; padding:12px 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="play-deck-name" id="playDeckName"></div>
+  <header>
+    <div id="headerTitleBlock">
+      <h1 id="screenTitle">デッキ登録</h1>
+      <div class="subtitle" id="screenSubtitle">カードを登録してから対戦を始めます</div>
+    </div>
+    <div class="toolbar-btns" id="deckSelectBtns" style="display:none;">
+      <button class="mini-btn" id="btnDeckSelectBack">戻る</button>
+    </div>
+    <div class="toolbar-btns" id="buildBtns">
+      <button class="mini-btn" id="btnReorder">順番を変える</button>
+      <button class="mini-btn" id="btnSortCount" style="display:none;">枚数順に並べる</button>
+      <button class="mini-btn" id="btnClearLib">全消去</button>
+      <button class="mini-btn" id="btnBuildBack">戻る</button>
+    </div>
+    <div class="toolbar-btns" id="playBtns" style="display:none;">
+      <button class="mini-btn" id="btnShuffle">シャッフル</button>
+      <button class="mini-btn" id="btnRestart">やり直す</button>
+      <button class="mini-btn" id="btnEditDeck">デッキ編集</button>
+      <button class="mini-btn" id="btnUndo">↺</button>
+    </div>
+    <button class="mini-btn gear-btn" id="btnSettings" title="設定"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1.02-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.56 1.02H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03z"/></svg></button>
+  </header>
+
+  <div class="screen active" id="screenTitleView">
+    <div class="title-center">
+      <div class="title-logo">ひとまわ</div>
+      <div class="title-tagline">いつでもどこでも、ひとりで回せる。</div>
+      <div class="title-menu">
+        <button class="big-btn" id="btnGoDeckSelect">デッキ選択</button>
+        <button class="big-btn" id="btnGoHowto">使い方</button>
+        <button class="big-btn sub-btn" id="btnContact">お問い合わせ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screenHowto">
+    <div class="howto-scroll">
+
+      <div class="howto-step">
+        <div class="howto-num">1</div>
+        <div class="howto-body">
+          <div class="howto-title">デッキをつくる</div>
+          <div class="howto-text">「デッキ選択」→「新規作成」でデッキを作り、<br>カードの画像を読み込みます。</div>
+        </div>
+      </div>
+
+      <div class="howto-step">
+        <div class="howto-num">2</div>
+        <div class="howto-body">
+          <div class="howto-title">カードを引く</div>
+          <div class="howto-text">山札から手札ゾーンへドラッグすると1枚ドロー。<br>山札からフィールドにドラッグすると<br>カードを出すことができます。</div>
+        </div>
+      </div>
+
+      <div class="howto-step">
+        <div class="howto-num">3</div>
+        <div class="howto-body">
+          <div class="howto-title">カードを動かす</div>
+          <div class="howto-text">手札のカードはドラッグでフィールドへ。<br>フィールドのカードは自由に動かせて、<br>タップすると回転・裏返し・山札へ戻すなどの<br>メニューが出ます。</div>
+        </div>
+      </div>
+
+      <div class="howto-step">
+        <div class="howto-num">4</div>
+        <div class="howto-body">
+          <div class="howto-title">山札のカード</div>
+          <div class="howto-text">山札をタップするとメニューが開き、<br>「山札を見る」で上から好きな枚数を確認できます。<br>見ているカードはドラッグすることで<br>手札やフィールドに移動できます。</div>
+        </div>
+      </div>
+
+      <div class="howto-step">
+        <div class="howto-num">5</div>
+        <div class="howto-body">
+          <div class="howto-title">まとめて選択</div>
+          <div class="howto-text">フィールドの空いている場所をなぞると範囲選択。<br>選んだカードはまとめて操作できます。</div>
+        </div>
+      </div>
+
+    </div>
+    <button class="big-btn" id="btnHowtoBack">タイトルへ戻る</button>
+  </div>
+
+  <div class="screen" id="screenDeckSelect">
+    <div class="deck-list-scroll">
+      <div class="deck-list" id="deckList"></div>
+    </div>
+    <button class="big-btn" id="btnNewDeck">新規作成</button>
+  </div>
+
+  <div class="screen" id="screenBuild">
+    <div class="build-scroll">
+      <div class="build-section-head">
+        <span>メインデッキ</span>
+        <button class="mini-btn section-add-btn" id="btnAddMain">＋ 画像を追加</button>
+      </div>
+      <div class="lib-grid" id="libGrid"></div>
+
+      <div class="build-section-head" style="margin-top:18px;">
+        <span>追加デッキ</span>
+        <button class="mini-btn section-add-btn" id="btnAddExtra">＋ 画像を追加</button>
+      </div>
+      <div class="lib-grid" id="extraGrid"></div>
+    </div>
+    <div class="build-footer">
+      <div class="total">メイン <b id="libTotal">0</b> 枚　追加 <b id="extraTotal">0</b> 枚</div>
+      <button class="big-btn" id="btnFinishDeck" disabled>このデッキで始める</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screenPlay">
+    <div class="counts">
+      山札 <b id="cDeck">0</b>　手札 <b id="cHand">0</b>　場 <b id="cField">0</b>
+    </div>
+
+    <div class="field" id="field">
+      <div class="field-label">FIELD</div>
+      <div class="empty-hint" id="emptyHint">手札のカードをドラッグしてここに出すか、<br>タップして「場に出す」を選んでください</div>
+    </div>
+
+    <div class="tray">
+      <div class="stack-zone">
+        <div class="stack-visual" id="deckVisual"></div>
+        <div class="stack-label">山札</div>
+      </div>
+
+      <div class="hand-zone" id="handZone">
+        <div class="stack-label">手札（山札からドラッグでドロー）</div>
+        <div class="hand-row" id="handRow"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screenSettings">
+    <div class="settings-scroll">
+      <div class="settings-section-title">ゲーム設定</div>
+      <div class="setting-row">
+        <span>開始時に手札へドロー</span>
+        <div class="num-ctrl">
+          <button class="mini-btn" id="drawMinus">－</button>
+          <b id="drawVal">0</b>
+          <button class="mini-btn" id="drawPlus">＋</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>開始時の裏向きカード</span>
+        <div class="num-ctrl">
+          <button class="mini-btn" id="fdMinus">－</button>
+          <b id="fdVal">0</b>
+          <button class="mini-btn" id="fdPlus">＋</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>「やり直す」の確認を省略</span>
+        <button class="mini-btn" id="skipConfirmToggle">オフ</button>
+      </div>
+
+      <div class="settings-section-title" style="margin-top:22px;">山札（カード裏面）の色</div>
+      <div class="swatch-grid" id="swatchGrid"></div>
+
+      <div class="custom-color-row">
+        <input type="color" id="customColorInput">
+        <label>カスタム色を選ぶ</label>
+      </div>
+
+      <div class="settings-section-title" style="margin-top:22px;">画面移動</div>
+      <div class="settings-nav">
+        <button class="mini-btn" id="btnNavTitle">タイトルへ</button>
+        <button class="mini-btn" id="btnNavDeckSelect">デッキ選択</button>
+      </div>
+    </div>
+    <button class="mini-btn settings-back" id="btnSettingsBack">戻る</button>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+
+<script>
+(function(){
+  // ブラウザ標準のピンチ拡大・ダブルタップ拡大を無効化（iOS Safari対策）
+  document.addEventListener('gesturestart', (e)=> e.preventDefault());
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (e)=>{
+    const now = Date.now();
+    if(now - lastTouchEnd < 350) e.preventDefault(); // ダブルタップ検出時はズームさせない
+    lastTouchEnd = now;
+  }, {passive:false});
+
+  const $ = (id)=>document.getElementById(id);
+
+  // ===== デッキ永続化（IndexedDB）=====
+  // 保存に失敗してもアプリは通常通り動く（メモリ上で継続）
+  let persistReady = false; // 初回読み込みが終わるまで保存しない（デフォルトで上書きしないため）
+  let saveTimer = null;
+  const DB_NAME = 'hitomawa', DB_STORE = 'kv', STATE_KEY = 'state';
+
+  function idbOpen(){
+    return new Promise((res, rej)=>{
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = ()=> r.result.createObjectStore(DB_STORE);
+      r.onsuccess = ()=> res(r.result);
+      r.onerror = ()=> rej(r.error);
+    });
+  }
+  function idbSet(key, val){
+    return idbOpen().then(db=> new Promise((res, rej)=>{
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(val, key);
+      tx.oncomplete = ()=>{ db.close(); res(); };
+      tx.onerror = ()=>{ db.close(); rej(tx.error); };
+    }));
+  }
+  function idbGet(key){
+    return idbOpen().then(db=> new Promise((res, rej)=>{
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const rq = tx.objectStore(DB_STORE).get(key);
+      rq.onsuccess = ()=>{ db.close(); res(rq.result); };
+      rq.onerror = ()=>{ db.close(); rej(rq.error); };
+    }));
+  }
+
+  function persistSnapshot(){
+    return {
+      v: 1,
+      decks,
+      purchasedSlots,
+      isSubscribed,
+      settings: { deckColor, autoDrawCount, autoFaceDownCount, skipRestartConfirm },
+      review: { sessions: reviewSessions, done: reviewDone }
+    };
+  }
+  function scheduleSave(){
+    if(!persistReady) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      try{ idbSet(STATE_KEY, persistSnapshot()).catch(()=>{}); }catch(e){}
+    }, 500);
+  }
+  function loadPersisted(){
+    try{
+      return idbGet(STATE_KEY).then(st=>{
+        if(!st) return;
+        if(Array.isArray(st.decks)){
+          decks = st.decks;
+          decks.forEach(d=>{ d.library = d.library || []; d.extra = d.extra || []; });
+        }
+        purchasedSlots = st.purchasedSlots || 0;
+        isSubscribed = !!st.isSubscribed;
+        if(st.settings){
+          deckColor = st.settings.deckColor || deckColor;
+          autoDrawCount = st.settings.autoDrawCount || 0;
+          autoFaceDownCount = st.settings.autoFaceDownCount || 0;
+          skipRestartConfirm = !!st.settings.skipRestartConfirm;
+        }
+        if(st.review){
+          reviewSessions = st.review.sessions || 0;
+          reviewDone = !!st.review.done;
+        }
+        // ID採番カウンタを既存データから復元（重複防止）
+        const maxNum = (ids, prefix)=> ids.reduce((m, x)=>{
+          const n = parseInt(String(x).replace(prefix, ''), 10);
+          return isNaN(n) ? m : Math.max(m, n);
+        }, 0);
+        deckUid = maxNum(decks.map(d=>d.id), 'deck') + 1;
+        libUid = maxNum(decks.flatMap(d=>[...d.library, ...d.extra]).map(l=>l.id), 'lib') + 1;
+      }).catch(()=>{});
+    }catch(e){ return Promise.resolve(); }
+  }
+
+  // ===== レビュー促進 =====
+  // ストアのアプリ内レビューAPIの呼び出し口。
+  // Capacitor化の際にここを In-App Review プラグイン
+  // （iOS: SKStoreReviewController / Android: Play In-App Review）の呼び出しに差し替える。
+  function requestStoreReview(){
+    showAlert('レビュー画面はアプリ版で表示されます。\n（試作品のためここでは開きません）');
+  }
+
+  function maybeAskReview(){
+    if(reviewDone) return;
+    // 10回目と25回目の開始タイミングでだけ聞く（しつこくしない）
+    if(reviewSessions !== 10 && reviewSessions !== 25) return;
+    setTimeout(()=>{
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+      const box = document.createElement('div');
+      box.className = 'confirm-box';
+      const p = document.createElement('p');
+      p.textContent = 'ひとまわを楽しんでいただけていますか？\nよろしければレビューで応援をお願いします！';
+      const actions = document.createElement('div');
+      actions.className = 'confirm-actions';
+      const later = document.createElement('button');
+      later.className = 'confirm-cancel';
+      later.textContent = 'あとで';
+      later.onclick = ()=> overlay.remove();
+      const ok = document.createElement('button');
+      ok.className = 'confirm-ok';
+      ok.textContent = 'レビューを書く';
+      ok.onclick = ()=>{
+        overlay.remove();
+        reviewDone = true;
+        scheduleSave();
+        requestStoreReview();
+      };
+      actions.appendChild(later); actions.appendChild(ok);
+      box.appendChild(p); box.appendChild(actions);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }, 600);
+  }
+
+  // 保存前にカード画像を縮小・圧縮する（表示品質を保ちつつ容量を1/10以下に）
+  function compressImage(dataUrl){
+    return new Promise((res)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        try{
+          const MAX = 600; // 長辺600px（表示サイズの約10倍で十分な精細さ）
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          res(cv.toDataURL('image/jpeg', 0.82));
+        }catch(e){ res(dataUrl); }
+      };
+      img.onerror = ()=> res(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+  const field = $('field'), handRow = $('handRow'), deckVisual = $('deckVisual'),
+        handZone = $('handZone'),
+        emptyHint = $('emptyHint'), fileInput = $('fileInput'),
+        screenBuild = $('screenBuild'), screenPlay = $('screenPlay'), screenSettings = $('screenSettings'),
+        screenTitleView = $('screenTitleView'), screenDeckSelect = $('screenDeckSelect'),
+        screenHowto = $('screenHowto'),
+        buildBtns = $('buildBtns'), playBtns = $('playBtns'), deckSelectBtns = $('deckSelectBtns'),
+        screenTitle = $('screenTitle'), screenSubtitle = $('screenSubtitle');
+
+  // ===== 収益構造モック（本実装ではストア課金と連携する） =====
+  const FREE_DECK_SLOTS = 1;      // 無料枠
+  const MAX_DECK_SLOTS = 20;      // 最大枠
+  let purchasedSlots = 0;         // 買い切りで追加した枠数（モック）
+  let isSubscribed = false;       // サブスク加入状態（モック）
+  function deckSlotLimit(){
+    return isSubscribed ? MAX_DECK_SLOTS : Math.min(FREE_DECK_SLOTS + purchasedSlots, MAX_DECK_SLOTS);
+  }
+
+  let decks = [];            // {id, name, library:[{id,img,count}]}
+  let currentDeckId = null;
+  let deckUid = 1;
+  let library = [];          // 常に現在選択中デッキのlibrary配列（メインデッキ）を参照する
+  let extraLibrary = [];     // 現在選択中デッキの追加デッキ配列を参照する
+
+  // ゲーム設定（設定画面から変更）
+  let autoDrawCount = 0;        // 開始時に自動で手札に加える枚数
+  let autoFaceDownCount = 0;    // 開始時に自動で裏向きで場に出す枚数
+  let skipRestartConfirm = false; // やり直すの確認を省略
+  let reviewSessions = 0;   // 一人回しを開始・やり直した累計回数（レビュー促進の判定用）
+  let reviewDone = false;   // レビュー依頼に応答済み（二度と出さない）
+  let libUid = 1;
+
+  function currentDeck(){ return decks.find(d=>d.id===currentDeckId) || null; }
+  function newDeckId(){ return 'deck'+(deckUid++); }
+
+  let cards = {};
+  let deckOrder = [];
+  let handOrder = [];
+  let selectedId = null;
+  let multiSel = new Set();
+  let instUid = 1;
+  let zCounter = 1;
+
+  // ---- undo history (一つ戻る) ----
+  let history = [];
+  function pushHistory(){
+    const snapCards = {};
+    Object.values(cards).forEach(c=>{ snapCards[c.id] = {...c}; });
+    history.push({cards:snapCards, deckOrder:[...deckOrder], handOrder:[...handOrder], zCounter});
+    if(history.length>50) history.shift();
+  }
+  function undo(){
+    if(history.length===0) return;
+    const s = history.pop();
+    cards = s.cards;
+    deckOrder = s.deckOrder;
+    handOrder = s.handOrder;
+    zCounter = s.zCounter;
+    multiSel.clear();
+    closePopover();
+    renderPlay();
+  }
+
+  let currentScreen = 'title';
+  let screenBeforeSettings = 'title';
+  let buildReturnTo = 'deckselect';  // デッキ編集画面の戻り先
+
+  const colorPresets = ['#ffcb05','#2f6fce','#d64545','#2fa36b','#8a5fc9','#e0913a','#d95fa0','#3ab5c6'];
+  let deckColor = colorPresets[0];
+
+  function newLibId(){ return 'lib'+(libUid++); }
+  function newInstId(){ return 'card'+(instUid++); }
+  function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+
+  function showAlert(message){
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const ok = document.createElement('button');
+    ok.className = 'confirm-ok';
+    ok.textContent = '閉じる';
+    ok.onclick = ()=> overlay.remove();
+    actions.appendChild(ok);
+    box.appendChild(p); box.appendChild(actions);
+    overlay.appendChild(box);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+
+  function showConfirm(message, onYes){
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const cancel = document.createElement('button');
+    cancel.className = 'confirm-cancel';
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = ()=> overlay.remove();
+    const ok = document.createElement('button');
+    ok.className = 'confirm-ok';
+    ok.textContent = '実行する';
+    ok.onclick = ()=>{ overlay.remove(); onYes(); };
+    actions.appendChild(cancel); actions.appendChild(ok);
+    box.appendChild(p); box.appendChild(actions);
+    overlay.appendChild(box);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+
+  // ================= SETTINGS =================
+  function applyDeckColor(){
+    scheduleSave();
+    document.documentElement.style.setProperty('--deck-color', deckColor);
+  }
+  function renderSettings(){
+    const grid = $('swatchGrid');
+    grid.innerHTML = '';
+    colorPresets.forEach(col=>{
+      const sw = document.createElement('button');
+      sw.className = 'swatch' + (col.toLowerCase()===deckColor.toLowerCase() ? ' selected' : '');
+      sw.style.background = col;
+      sw.onclick = ()=>{ deckColor = col; applyDeckColor(); renderSettings(); };
+      grid.appendChild(sw);
+    });
+    $('customColorInput').value = deckColor;
+  }
+  $('customColorInput').oninput = (e)=>{ deckColor = e.target.value; applyDeckColor(); renderSettings(); };
+  $('btnSettings').onclick = ()=>{
+    if(currentScreen === 'settings'){
+      // 設定画面中にもう一度押したら元の画面へ戻る
+      goToScreen(screenBeforeSettings);
+    } else {
+      screenBeforeSettings = currentScreen;
+      goToScreen('settings');
+    }
+  };
+  $('btnSettingsBack').onclick = ()=> goToScreen(screenBeforeSettings);
+
+  // ================= TITLE & DECK SELECT =================
+  function showTextInput(message, defaultVal, onOk, okLabel){
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = message;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'text-input';
+    input.value = defaultVal;
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const cancel = document.createElement('button');
+    cancel.className = 'confirm-cancel';
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = ()=> overlay.remove();
+    const ok = document.createElement('button');
+    ok.className = 'confirm-ok';
+    ok.textContent = okLabel || '作成';
+    ok.onclick = ()=>{
+      const name = input.value.trim() || defaultVal;
+      overlay.remove();
+      onOk(name);
+    };
+    actions.appendChild(cancel); actions.appendChild(ok);
+    box.appendChild(p); box.appendChild(input); box.appendChild(actions);
+    overlay.appendChild(box);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+    input.focus();
+    input.select();
+  }
+
+  function renderDeckSelect(){
+    scheduleSave();
+    const list = $('deckList');
+    list.innerHTML = '';
+    if(decks.length===0){
+      list.innerHTML = '<div class="deck-list-empty">まだデッキがありません。<br>「新規作成」からデッキを作りましょう。</div>';
+      return;
+    }
+    decks.forEach(deck=>{
+      const item = document.createElement('div');
+      item.className = 'deck-item';
+      const thumb = document.createElement('div');
+      thumb.className = 'deck-item-thumb card-back';
+      if(deck.library.length>0){
+        thumb.classList.remove('card-back');
+        thumb.style.backgroundImage = `url(${deck.library[0].img})`;
+      }
+      const info = document.createElement('div');
+      info.className = 'deck-item-info';
+      const name = document.createElement('div');
+      name.className = 'deck-item-name';
+      name.textContent = deck.name;
+      const count = document.createElement('div');
+      count.className = 'deck-item-count';
+      count.textContent = deck.library.reduce((s,l)=>s+l.count,0) + ' 枚';
+      info.appendChild(name);
+      info.appendChild(count);
+
+      // 下段のボタン行（名前変更・削除）
+      const actions = document.createElement('div');
+      actions.className = 'deck-item-actions';
+      const renameBtn = document.createElement('button');
+      renameBtn.className = 'mini-btn deck-action-btn';
+      renameBtn.textContent = '名前変更';
+      renameBtn.onclick = (e)=>{
+        e.stopPropagation(); // デッキを開く動作を止める
+        showTextInput('デッキの名前を変更', deck.name, (newName)=>{
+          deck.name = newName;
+          renderDeckSelect();
+        }, '変更');
+      };
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'mini-btn deck-action-btn deck-delete-btn';
+      deleteBtn.textContent = '削除';
+      deleteBtn.onclick = (e)=>{
+        e.stopPropagation();
+        showConfirm(`「${deck.name}」を削除しますか？\nこの操作は戻せません。`, ()=>{
+          decks = decks.filter(d=> d.id !== deck.id);
+          if(currentDeckId === deck.id){
+            currentDeckId = null;
+            library = [];
+          }
+          renderDeckSelect();
+        });
+      };
+      actions.appendChild(renameBtn);
+      actions.appendChild(deleteBtn);
+      info.appendChild(actions);
+
+      item.appendChild(thumb);
+      item.appendChild(info);
+      item.onclick = ()=>{
+        currentDeckId = deck.id;
+        deck.extra = deck.extra || [];
+        library = deck.library;
+        extraLibrary = deck.extra;
+        buildReturnTo = 'deckselect';
+        goToScreen('build');
+      };
+      list.appendChild(item);
+    });
+
+    // 次の1枠だけロック表示（¥100で追加 or サブスク訴求）
+    if(!isSubscribed && decks.length >= deckSlotLimit() && deckSlotLimit() < MAX_DECK_SLOTS){
+      const lock = document.createElement('div');
+      lock.className = 'deck-item deck-item-locked';
+      const thumb = document.createElement('div');
+      thumb.className = 'deck-item-thumb deck-lock-thumb';
+      const info = document.createElement('div');
+      info.className = 'deck-item-info';
+      const name = document.createElement('div');
+      name.className = 'deck-item-name';
+      name.textContent = 'デッキ枠を追加';
+      const desc = document.createElement('div');
+      desc.className = 'deck-item-count';
+      desc.textContent = `¥100で保存枠を1つ追加（最大${MAX_DECK_SLOTS}個）`;
+      const actions = document.createElement('div');
+      actions.className = 'deck-item-actions';
+      const buyBtn = document.createElement('button');
+      buyBtn.className = 'mini-btn deck-action-btn deck-buy-btn';
+      buyBtn.textContent = '¥100で追加';
+      buyBtn.onclick = ()=>{
+        showConfirm('デッキ保存枠を1つ追加しますか？（¥100）\n※試作品のため実際の課金は発生しません', ()=>{
+          purchasedSlots++;
+          // 購入した枠に空のデッキをそのまま登録する
+          const deck = {id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]};
+          decks.push(deck);
+          renderDeckSelect();
+        });
+      };
+      const subBtn = document.createElement('button');
+      subBtn.className = 'mini-btn deck-action-btn deck-buy-btn';
+      subBtn.textContent = 'サブスク(¥300)';
+      subBtn.onclick = ()=>{
+        showConfirm('月額¥300で広告削除＋\nデッキ枠が最大20個になります。\n加入しますか？\n※試作品のため実際の課金は発生しません', ()=>{
+          isSubscribed = true;
+          // 20枠すべてを空デッキで埋める
+          while(decks.length < MAX_DECK_SLOTS){
+            decks.push({id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]});
+          }
+          renderDeckSelect();
+        });
+      };
+      actions.appendChild(buyBtn);
+      actions.appendChild(subBtn);
+      info.appendChild(name);
+      info.appendChild(desc);
+      info.appendChild(actions);
+      lock.appendChild(thumb);
+      lock.appendChild(info);
+      list.appendChild(lock);
+    }
+
+    // 枠の使用状況表示
+    const status = document.createElement('div');
+    status.className = 'slot-status';
+    status.textContent = `デッキ保存枠：${decks.length} / ${deckSlotLimit()}`;
+    list.appendChild(status);
+  }
+
+  $('btnGoDeckSelect').onclick = ()=> goToScreen('deckselect');
+  $('btnDeckSelectBack').onclick = ()=> goToScreen('title');
+  $('btnGoHowto').onclick = ()=> goToScreen('howto');
+
+  // ===== お問い合わせ =====
+  const CONTACT_FORM_URL = 'https://forms.gle/4UyRdSkAcFxwfjDn8';
+  $('btnContact').onclick = ()=>{
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = '不具合の報告・ご要望などは\nこちらからお送りください。';
+    const formBtn = document.createElement('button');
+    formBtn.className = 'viewer-close-btn viewer-wide-btn';
+    formBtn.textContent = 'お問い合わせフォームを開く';
+    formBtn.onclick = ()=>{ window.open(CONTACT_FORM_URL, '_blank'); };
+    const close = document.createElement('button');
+    close.className = 'confirm-cancel viewer-wide-btn';
+    close.style.border = '1.5px solid var(--line)';
+    close.style.borderRadius = '999px';
+    close.style.padding = '13px 12px';
+    close.style.fontSize = '13px';
+    close.style.fontWeight = '800';
+    close.textContent = '閉じる';
+    close.onclick = ()=> overlay.remove();
+    box.appendChild(p);
+    box.appendChild(formBtn);
+    box.appendChild(close);
+    overlay.appendChild(box);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  };
+  $('btnHowtoBack').onclick = ()=> goToScreen('title');
+  $('btnNewDeck').onclick = ()=>{
+    if(decks.length >= deckSlotLimit()){
+      if(deckSlotLimit() >= MAX_DECK_SLOTS){
+        showAlert('既に最大まで拡張済みです');
+      } else {
+        showAlert('デッキ保存枠がいっぱいです。\n枠を追加（¥100）するか、サブスク（¥300）で\n最大20個まで保存できます。');
+      }
+      return;
+    }
+    showTextInput('デッキの名前を入力してください', `デッキ${decks.length+1}`, (name)=>{
+      const deck = {id:newDeckId(), name, library:[], extra:[]};
+      decks.push(deck);
+      currentDeckId = deck.id;
+      library = deck.library;
+      extraLibrary = deck.extra;
+      buildReturnTo = 'deckselect';
+      goToScreen('build');
+    });
+  };
+  function updateGameSettingsUI(){
+    scheduleSave();
+    $('drawVal').textContent = autoDrawCount;
+    $('fdVal').textContent = autoFaceDownCount;
+    const t = $('skipConfirmToggle');
+    t.textContent = skipRestartConfirm ? 'オン' : 'オフ';
+    t.classList.toggle('on', skipRestartConfirm);
+  }
+  $('drawMinus').onclick = ()=>{ autoDrawCount = clamp(autoDrawCount-1, 0, 10); updateGameSettingsUI(); };
+  $('drawPlus').onclick  = ()=>{ autoDrawCount = clamp(autoDrawCount+1, 0, 10); updateGameSettingsUI(); };
+  $('fdMinus').onclick = ()=>{ autoFaceDownCount = clamp(autoFaceDownCount-1, 0, 10); updateGameSettingsUI(); };
+  $('fdPlus').onclick  = ()=>{ autoFaceDownCount = clamp(autoFaceDownCount+1, 0, 10); updateGameSettingsUI(); };
+  $('skipConfirmToggle').onclick = ()=>{ skipRestartConfirm = !skipRestartConfirm; updateGameSettingsUI(); };
+  updateGameSettingsUI();
+
+  $('btnNavTitle').onclick = ()=> goToScreen('title');
+  $('btnNavDeckSelect').onclick = ()=> goToScreen('deckselect');
+
+  // ================= BUILD SCREEN =================
+  let addTarget = 'main'; // 画像追加先：'main' | 'extra'
+  let reorderMode = false; // 並べ替えモード
+  function readFilesToLibrary(fileList, targetArr){
+    const files = Array.from(fileList);
+    Promise.all(files.map(f => new Promise((res)=>{
+      const r = new FileReader();
+      r.onload = ()=> res(r.result);
+      r.readAsDataURL(f);
+    }))).then(imgs=> Promise.all(imgs.map(compressImage))).then(imgs=>{
+      imgs.forEach(img=>{ targetArr.push({id:newLibId(), img, count:1}); });
+      renderBuild();
+    });
+  }
+
+  function renderBuild(){
+    scheduleSave();
+    grid_render($('libGrid'), library, 'まだカードが登録されていません。<br>「＋ 画像を追加」からカード画像を選んでください。<br>同じカードを複数枚使いたい場合は、登録後に「＋」で複製できます。');
+    grid_render($('extraGrid'), extraLibrary, '追加デッキは任意です。<br>登録したカードは、開始時からフィールド上部に置かれます。');
+    const total = library.reduce((s,l)=>s+l.count,0);
+    const extraTotal = extraLibrary.reduce((s,l)=>s+l.count,0);
+    $('libTotal').textContent = total;
+    $('extraTotal').textContent = extraTotal;
+    $('btnFinishDeck').disabled = total===0;
+  }
+
+  function grid_render(grid, arr, emptyHtml){
+    grid._arr = arr;
+    grid._empty = emptyHtml;
+    grid.classList.toggle('reordering', reorderMode);
+    grid.innerHTML = '';
+    if(arr.length===0){
+      grid.innerHTML = '<div class="lib-empty">' + emptyHtml + '</div>';
+      return;
+    }
+    arr.forEach(item=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'lib-item';
+      wrap.dataset.libId = item.id;
+      if(reorderMode) attachLibReorder(wrap, item, grid);
+
+      const thumbWrap = document.createElement('div');
+      thumbWrap.className = 'lib-thumb-wrap';
+      const thumb = document.createElement('div');
+      thumb.className = 'lib-thumb';
+      thumb.style.backgroundImage = `url(${item.img})`;
+      const countBadge = document.createElement('div');
+      countBadge.className = 'lib-count';
+      countBadge.textContent = item.count;
+      thumbWrap.appendChild(thumb);
+      thumbWrap.appendChild(countBadge);
+
+      const ctrl = document.createElement('div');
+      ctrl.className = 'lib-ctrl';
+      const minus = document.createElement('button');
+      minus.textContent = '－';
+      minus.onclick = ()=>{
+        item.count = Math.max(0, item.count-1); // 0枚まで。項目は削除しない（削除は「削除」ボタンで）
+        renderBuild();
+      };
+      const plus = document.createElement('button');
+      plus.textContent = '＋';
+      plus.title = '複製';
+      plus.onclick = ()=>{ item.count++; renderBuild(); };
+      ctrl.appendChild(minus); ctrl.appendChild(plus);
+
+      const remove = document.createElement('button');
+      remove.className = 'lib-remove';
+      remove.textContent = '削除';
+      remove.onclick = ()=>{
+        const idx = arr.findIndex(l=>l.id===item.id);
+        if(idx>-1) arr.splice(idx,1);
+        renderBuild();
+      };
+
+      wrap.appendChild(thumbWrap);
+      wrap.appendChild(ctrl);
+      wrap.appendChild(remove);
+      grid.appendChild(wrap);
+    });
+  }
+
+  // 並べ替えモード：FLIPアニメ付きで滑らかに入れ替える
+  function flipRender(grid, draggedId){
+    const olds = {};
+    grid.querySelectorAll('.lib-item').forEach(n=>{ olds[n.dataset.libId] = n.getBoundingClientRect(); });
+    grid_render(grid, grid._arr, grid._empty);
+    grid.querySelectorAll('.lib-item').forEach(n=>{
+      if(n.dataset.libId === draggedId) n.style.visibility = 'hidden';
+      const o = olds[n.dataset.libId];
+      if(!o) return;
+      const nr = n.getBoundingClientRect();
+      const dx = o.left - nr.left, dy = o.top - nr.top;
+      if(dx || dy){
+        n.style.transition = 'none';
+        n.style.transform = `translate(${dx}px, ${dy}px)`;
+        requestAnimationFrame(()=>{
+          n.style.transition = 'transform .18s ease';
+          n.style.transform = '';
+        });
+      }
+    });
+  }
+
+  function attachLibReorder(wrap, item, grid){
+    wrap.addEventListener('pointerdown', (e)=>{
+      if(!reorderMode) return;
+      e.preventDefault();
+      const arr = grid._arr;
+      let ghost = document.createElement('div');
+      ghost.className = 'flying-ghost';
+      ghost.style.backgroundImage = `url(${item.img})`;
+      document.body.appendChild(ghost);
+      ghost.style.left = (e.clientX - 29)+'px';
+      ghost.style.top = (e.clientY - 40)+'px';
+      wrap.style.visibility = 'hidden';
+
+      const onMove = (ev)=>{
+        ghost.style.left = (ev.clientX - 29)+'px';
+        ghost.style.top = (ev.clientY - 40)+'px';
+        // 挿入先を計算（読み順：上の行→左から右）
+        const nodes = [...grid.querySelectorAll('.lib-item')].filter(n=> n.dataset.libId !== item.id);
+        let g = 0;
+        nodes.forEach(n=>{
+          const r = n.getBoundingClientRect();
+          if(ev.clientY > r.bottom) g++;                                   // その行より下にいる
+          else if(ev.clientY >= r.top && ev.clientX > r.left + r.width/2) g++; // 同じ行で右側にいる
+        });
+        const fromIdx = arr.findIndex(l=> l.id === item.id);
+        if(g !== fromIdx){
+          arr.splice(fromIdx, 1);
+          arr.splice(g, 0, item);
+          flipRender(grid, item.id);
+        }
+      };
+      const onUp = ()=>{
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+        if(ghost){ ghost.remove(); ghost = null; }
+        renderBuild();
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+  }
+
+  function updateReorderBtn(){
+    const b = $('btnReorder');
+    b.textContent = reorderMode ? '完了' : '順番を変える';
+    b.classList.toggle('active', reorderMode);
+    $('btnSortCount').style.display = reorderMode ? '' : 'none';
+  }
+  $('btnReorder').onclick = ()=>{
+    reorderMode = !reorderMode;
+    updateReorderBtn();
+    renderBuild();
+  };
+  $('btnSortCount').onclick = ()=>{
+    // 枚数の多い順に並べ替え（左上から順に並ぶ）。同数のカードは元の順を維持
+    const byCount = (a,b)=> b.count - a.count;
+    library.sort(byCount);
+    extraLibrary.sort(byCount);
+    renderBuild();
+  };
+
+  $('btnBuildBack').onclick = ()=> goToScreen(buildReturnTo);
+  $('btnAddMain').onclick = ()=>{ addTarget = 'main'; fileInput.click(); };
+  $('btnAddExtra').onclick = ()=>{ addTarget = 'extra'; fileInput.click(); };
+  fileInput.onchange = (e)=>{
+    if(e.target.files.length) readFilesToLibrary(e.target.files, addTarget==='extra' ? extraLibrary : library);
+    fileInput.value='';
+  };
+  $('btnClearLib').onclick = ()=>{
+    if(library.length===0 && extraLibrary.length===0) return;
+    showConfirm('登録したカードをすべて削除しますか？\n（メイン・追加の両方）', ()=>{
+      library.length = 0;
+      extraLibrary.length = 0;
+      renderBuild();
+    });
+  };
+
+  $('btnFinishDeck').onclick = ()=>{
+    history = [];
+    goToScreen('play');           // 先に画面を切り替えてフィールドの実寸を確定させる
+    startNewSessionFromLibrary(); // その後に配置を計算する
+  };
+
+  // ================= PLAY SCREEN =================
+  function startNewSessionFromLibrary(){
+    cards = {}; deckOrder = []; handOrder = []; selectedId = null;
+    library.forEach(item=>{
+      for(let i=0;i<item.count;i++){
+        const id = newInstId();
+        cards[id] = {id, img:item.img, zone:'deck', x:50, y:50, rot:0, faceDown:true};
+        deckOrder.push(id);
+      }
+    });
+    shuffle(deckOrder);
+    // 追加デッキ：開始時からフィールド右上に少しずつずらして重ねて置く
+    // 縦位置はフィールドの実寸から計算し、カード上端が枠にギリギリ収まる高さにする
+    const fh = field.getBoundingClientRect().height || 250;
+    const topY = clamp(((81/2 + 4) / fh) * 100, 5, 30); // カード半分+余白4pxぶん下げた中心位置
+    let ei = 0;
+    extraLibrary.forEach(item=>{
+      for(let i=0;i<item.count;i++){
+        const id = newInstId();
+        cards[id] = {
+          id, img:item.img, zone:'field',
+          x: clamp(89 - ei*4, 6, 94),  // 右端から左へ少しずつずらして重ねる
+          y: topY,
+          rot:0, faceDown:false, z: ++zCounter
+        };
+        ei++;
+      }
+    });
+    // レビュー促進：開始回数をカウント
+    reviewSessions++;
+    scheduleSave();
+    maybeAskReview();
+    // 開始時の自動処理：裏向き配置 → 手札ドロー（設定）
+    placeFaceDownBatch(autoFaceDownCount);
+    for(let i=0; i<autoDrawCount && deckOrder.length>0; i++){
+      const id = deckOrder.shift();
+      const c = cards[id];
+      c.zone='hand'; c.faceDown=false; c.rot=0;
+      handOrder.push(id);
+    }
+    renderPlay();
+  }
+
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+  }
+
+  function removeFromAllOrders(id){
+    [deckOrder,handOrder].forEach(arr=>{
+      const i = arr.indexOf(id);
+      if(i>-1) arr.splice(i,1);
+    });
+  }
+
+  function drawCard(){
+    if(deckOrder.length===0) return;
+    pushHistory();
+    const id = deckOrder.shift();
+    const c = cards[id];
+    c.zone='hand'; c.faceDown=false; c.rot=0;
+    handOrder.push(id);
+    closePopover();
+    renderPlay();
+  }
+
+  function moveToField(id, xPct, yPct){
+    pushHistory();
+    removeFromAllOrders(id);
+    const c = cards[id];
+    c.zone='field'; c.faceDown=false;
+    c.x = clamp(xPct,6,94); c.y = clamp(yPct,8,92);
+    c.z = ++zCounter;
+    closePopover();
+    renderPlay();
+  }
+
+  function placeFaceDownBatch(n){
+    if(deckOrder.length===0 || n<=0) return;
+    const ids = deckOrder.slice(0, Math.min(n, deckOrder.length));
+    // 直前に置いたカードの位置に関係なく、画面中央の左端から右へ並べる
+    const rect = field.getBoundingClientRect();
+    const stepX = (58 * 0.88 / rect.width) * 100;
+    const stepY = (81 * 0.95 / rect.height) * 100;
+    // 既にフィールドにあるカードの位置は避ける（重なりそうなら次のスロットへ）
+    const existing = Object.values(cards)
+      .filter(c=> c.zone==='field')
+      .map(c=> ({x:c.x, y:c.y}));
+    const isBlocked = (x,y)=> existing.some(o=> Math.abs(o.x-x) < stepX*0.9 && Math.abs(o.y-y) < stepY*0.8);
+    let x = 8, y = 50;
+    const nextSlot = ()=>{
+      x += stepX;
+      if(x > 92){ x = 8; y += stepY; if(y > 92) y = 20; }
+    };
+    ids.forEach(id=>{
+      // 既存カードと重なるスロットはスキップして右へ（保険で最大60回まで）
+      let guard = 0;
+      while(isBlocked(x, y) && guard++ < 60) nextSlot();
+      removeFromAllOrders(id);
+      const c = cards[id];
+      c.zone='field'; c.faceDown=true; c.rot=0;
+      c.x = clamp(x, 6, 94); c.y = clamp(y, 8, 92);
+      c.z = ++zCounter;
+      nextSlot();
+    });
+  }
+
+  function moveTopNToFieldFaceDown(n){
+    if(deckOrder.length===0) return;
+    pushHistory();
+    placeFaceDownBatch(n);
+    closePopover();
+    renderPlay();
+  }
+
+  function moveToFieldFaceDown(id, xPct, yPct){
+    pushHistory();
+    removeFromAllOrders(id);
+    const c = cards[id];
+    c.zone='field'; c.faceDown=true; c.rot=0;
+    c.x = clamp(xPct,6,94); c.y = clamp(yPct,8,92);
+    c.z = ++zCounter;
+    closePopover();
+    renderPlay();
+  }
+
+  function moveToHand(id){
+    pushHistory();
+    removeFromAllOrders(id);
+    const c = cards[id];
+    c.zone='hand'; c.faceDown=false; c.rot=0;
+    handOrder.push(id);
+    closePopover();
+    renderPlay();
+  }
+
+  function moveToDeckBottom(id){
+    pushHistory();
+    removeFromAllOrders(id);
+    const c = cards[id];
+    c.zone='deck'; c.faceDown=true; c.rot=0;
+    deckOrder.push(id);
+    closePopover();
+    renderPlay();
+  }
+
+  function moveToDeckTop(id){
+    pushHistory();
+    removeFromAllOrders(id);
+    const c = cards[id];
+    c.zone='deck'; c.faceDown=true; c.rot=0;
+    deckOrder.unshift(id);
+    closePopover();
+    renderPlay();
+  }
+
+  function rotateCard(id){ pushHistory(); cards[id].rot = (cards[id].rot+90)%360; renderPlay(); }
+  function flipCard(id){ pushHistory(); cards[id].faceDown = !cards[id].faceDown; renderPlay(); }
+
+  // メニューから場に出すときの置き場所：直前に置いたカードの右隣（少し重ねて）に順に並べる
+  function findFreeFieldSpot(){
+    const fieldCards = Object.values(cards).filter(c=>c.zone==='field');
+    // 1枚目は左寄り・中段からスタート（右に並べていく余地を残す）
+    if(fieldCards.length===0) return {x:14, y:50};
+    // 最後に置いた（触った）カード＝zが最大のカードの右隣
+    const last = fieldCards.reduce((a,b)=> ((b.z||0)>(a.z||0)) ? b : a);
+    const rect = field.getBoundingClientRect();
+    // カード幅の88%だけ右へ → 12%ぶんが重なる
+    const stepX = (58 * 0.88 / rect.width) * 100;
+    const stepY = (81 * 0.95 / rect.height) * 100;
+    let x = last.x + stepX;
+    let y = last.y;
+    if(x > 92){           // 右端まで来たら次の段の左端へ
+      x = 14;
+      y = last.y + stepY;
+      if(y > 92) y = 20;  // 下段も埋まったら上段へ戻る
+    }
+    return {x: clamp(x,6,94), y: clamp(y,8,92)};
+  }
+
+  // ---- rubber-band multi select on empty field ----
+  (function setupRubberBand(){
+    let sx, sy, rectEl = null, active = false;
+    field.addEventListener('pointerdown', (e)=>{
+      // カードの上はカード側でstopPropagationされるので、ここに来るのは空白のみ
+      active = true;
+      field.setPointerCapture(e.pointerId);
+      const fr = field.getBoundingClientRect();
+      sx = e.clientX - fr.left; sy = e.clientY - fr.top;
+      rectEl = null;
+    });
+    field.addEventListener('pointermove', (e)=>{
+      if(!active) return;
+      const fr = field.getBoundingClientRect();
+      const cx = e.clientX - fr.left, cy = e.clientY - fr.top;
+      if(!rectEl && (Math.abs(cx-sx)>6 || Math.abs(cy-sy)>6)){
+        rectEl = document.createElement('div');
+        rectEl.className = 'select-rect';
+        field.appendChild(rectEl);
+        closePopover();
+      }
+      if(rectEl){
+        const x = Math.min(sx,cx), y = Math.min(sy,cy);
+        const w = Math.abs(cx-sx), h = Math.abs(cy-sy);
+        rectEl.style.left = x+'px'; rectEl.style.top = y+'px';
+        rectEl.style.width = w+'px'; rectEl.style.height = h+'px';
+      }
+    });
+    field.addEventListener('pointerup', (e)=>{
+      if(!active) return;
+      active = false;
+      const fr = field.getBoundingClientRect();
+      if(rectEl){
+        const cx = e.clientX - fr.left, cy = e.clientY - fr.top;
+        const x1 = Math.min(sx,cx), y1 = Math.min(sy,cy);
+        const x2 = Math.max(sx,cx), y2 = Math.max(sy,cy);
+        multiSel.clear();
+        Object.values(cards).filter(c=>c.zone==='field').forEach(c=>{
+          const px = (c.x/100)*fr.width, py = (c.y/100)*fr.height;
+          // 回転している場合は縦横が入れ替わる
+          const halfW = (c.rot%180===90 ? 81 : 58)/2;
+          const halfH = (c.rot%180===90 ? 58 : 81)/2;
+          const overlap = (px-halfW) < x2 && (px+halfW) > x1 && (py-halfH) < y2 && (py+halfH) > y1;
+          if(overlap) multiSel.add(c.id);
+        });
+        rectEl.remove(); rectEl = null;
+        renderPlay();
+      } else {
+        // ただのタップ：選択解除
+        if(multiSel.size>0){ multiSel.clear(); renderPlay(); }
+      }
+    });
+    field.addEventListener('pointercancel', ()=>{
+      active = false;
+      if(rectEl){ rectEl.remove(); rectEl = null; }
+    });
+  })();
+
+  function moveToHandSilent(id){
+    removeFromAllOrders(id);
+    const c = cards[id];
+    c.zone='hand'; c.faceDown=false; c.rot=0;
+    handOrder.push(id);
+  }
+  function groupMoveToHand(){
+    pushHistory();
+    [...multiSel].forEach(id=>{
+      if(cards[id] && cards[id].zone==='field') moveToHandSilent(id);
+    });
+    multiSel.clear();
+    closePopover();
+    renderPlay();
+  }
+
+  // ---- deck: tap = menu / drag to hand zone = draw ----
+  function isOverHandZone(x, y){
+    const r = handZone.getBoundingClientRect();
+    return x>=r.left && x<=r.right && y>=r.top && y<=r.bottom;
+  }
+
+  function attachDeckPress(wrap){
+    let startX, startY, moved=false, ghost=null;
+    wrap.addEventListener('pointerdown', (e)=>{
+      e.stopPropagation();
+      cleanupGhosts();
+      wrap.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY; moved=false;
+    });
+    wrap.addEventListener('pointermove', (e)=>{
+      if(!wrap.hasPointerCapture(e.pointerId)) return;
+      const dx = e.clientX-startX, dy = e.clientY-startY;
+      if(!moved && (Math.abs(dx)>6 || Math.abs(dy)>6)){
+        moved = true;
+        ghost = document.createElement('div');
+        ghost.className = 'flying-ghost card-back';
+        document.body.appendChild(ghost);
+      }
+      if(moved && ghost){
+        ghost.style.left = (e.clientX - 29)+'px';
+        ghost.style.top = (e.clientY - 40)+'px';
+      }
+    });
+    wrap.addEventListener('pointerup', (e)=>{
+      if(moved && ghost){
+        ghost.remove(); ghost=null;
+        if(isOverHandZone(e.clientX, e.clientY)){
+          drawCard();
+        } else {
+          const rect = field.getBoundingClientRect();
+          const inField = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+          if(inField && deckOrder.length>0){
+            const relX = ((e.clientX - rect.left)/rect.width)*100;
+            const relY = ((e.clientY - rect.top)/rect.height)*100;
+            moveToField(deckOrder[0], relX, relY);
+          }
+        }
+      } else {
+        showDeckMenu(wrap);
+      }
+    });
+    const cancelDeckDrag = ()=>{ if(ghost){ ghost.remove(); ghost=null; } };
+    wrap.addEventListener('pointercancel', cancelDeckDrag);
+    wrap.addEventListener('lostpointercapture', cancelDeckDrag);
+    wrap.addEventListener('contextmenu', (e)=> e.preventDefault());
+  }
+
+  function showDeckMenu(anchorEl){
+    closePopover();
+    const rect = anchorEl.getBoundingClientRect();
+    const pop = document.createElement('div');
+    pop.className = 'popover';
+    const items = [
+      ['山札を見る', ()=>{
+        closePopover();
+        showNumberInput('上から何枚見ますか？', deckOrder.length, (n)=> showDeckViewer(n));
+      }],
+      ['裏向きのままフィールドへ', ()=>{
+        closePopover();
+        if(deckOrder.length>0){
+          showNumberInput('上から何枚フィールドに出しますか？', deckOrder.length, (n)=> moveTopNToFieldFaceDown(n));
+        }
+      }]
+    ];
+    items.forEach(([label,fn])=>{
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.onclick = (e)=>{ e.stopPropagation(); fn(); };
+      pop.appendChild(b);
+    });
+    document.body.appendChild(pop);
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let top = rect.top - ph - 8;
+    if(top < 4) top = rect.bottom + 8;
+    let left = clamp(rect.left + rect.width/2 - pw/2, 6, window.innerWidth - pw - 6);
+    pop.style.top = top+'px';
+    pop.style.left = left+'px';
+  }
+
+  function showNumberInput(message, max, onOk){
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = message + `\n（最大 ${max} 枚）`;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'num-input';
+    input.min = 1; input.max = max; input.value = Math.min(3, max);
+    const getVal = ()=> clamp(parseInt(input.value,10)||1, 1, max);
+    const minusBtn = document.createElement('button');
+    minusBtn.className = 'all-btn';
+    minusBtn.textContent = '－';
+    minusBtn.onclick = ()=>{ input.value = clamp(getVal()-1, 1, max); };
+    const plusBtn = document.createElement('button');
+    plusBtn.className = 'all-btn';
+    plusBtn.textContent = '＋';
+    plusBtn.onclick = ()=>{ input.value = clamp(getVal()+1, 1, max); };
+    const allBtn = document.createElement('button');
+    allBtn.className = 'all-btn';
+    allBtn.textContent = '全て';
+    allBtn.onclick = ()=>{ input.value = max; };
+    const inputRow = document.createElement('div');
+    inputRow.className = 'num-input-row';
+    inputRow.appendChild(minusBtn);
+    inputRow.appendChild(input);
+    inputRow.appendChild(plusBtn);
+    inputRow.appendChild(allBtn);
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const cancel = document.createElement('button');
+    cancel.className = 'confirm-cancel';
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = ()=> overlay.remove();
+    const ok = document.createElement('button');
+    ok.className = 'confirm-ok';
+    ok.textContent = '見る';
+    ok.onclick = ()=>{
+      const n = clamp(parseInt(input.value,10)||1, 1, max);
+      overlay.remove();
+      onOk(n);
+    };
+    actions.appendChild(cancel); actions.appendChild(ok);
+    box.appendChild(p); box.appendChild(inputRow); box.appendChild(actions);
+    overlay.appendChild(box);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+    // 自動フォーカスはしない：スマホでキーボードが勝手に開くのを防ぐ（＋−や全てで操作できる）
+  }
+
+  function showDeckViewer(n){
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay viewer-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box viewer-box';
+    const p = document.createElement('p');
+    p.textContent = `山札の上から ${Math.min(n, deckOrder.length)} 枚`;
+    const grid = document.createElement('div');
+    grid.className = 'viewer-grid';
+    // 開いた時点で見えていたカードを固定（あとから山札の次のカードが繰り上がって見えないように）
+    const viewedIds = new Set(deckOrder.slice(0, Math.min(n, deckOrder.length)));
+
+    function currentViewed(){ return deckOrder.filter(id=> viewedIds.has(id)); }
+
+    function closeViewerMenu(){
+      const m = box.querySelector('.popover');
+      if(m) m.remove();
+      grid.querySelectorAll('.card.selected').forEach(el=>el.classList.remove('selected'));
+    }
+
+    function toDeckTopFromViewer(id){
+      pushHistory();
+      removeFromAllOrders(id);
+      deckOrder.unshift(id);
+      viewedIds.delete(id);
+      renderPlay();
+      rebuildGrid();
+    }
+    function toDeckBottomFromViewer(id){
+      pushHistory();
+      removeFromAllOrders(id);
+      deckOrder.push(id);
+      viewedIds.delete(id);
+      renderPlay();
+      rebuildGrid();
+    }
+
+    function showViewerMenu(img, id){
+      closeViewerMenu();
+      img.classList.add('selected');
+      const menu = document.createElement('div');
+      menu.className = 'popover';
+      const actions = [
+        ['山札の上に置く', ()=> toDeckTopFromViewer(id)],
+        ['山札の下に置く', ()=> toDeckBottomFromViewer(id)]
+      ];
+      actions.forEach(([label,fn])=>{
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.onclick = (ev)=>{ ev.stopPropagation(); fn(); };
+        menu.appendChild(b);
+      });
+      box.appendChild(menu);
+      const rect = img.getBoundingClientRect();
+      const boxRect = box.getBoundingClientRect();
+      const pw = menu.offsetWidth, ph = menu.offsetHeight;
+      let top = rect.top - boxRect.top - ph - 6;
+      if(top < 4) top = rect.bottom - boxRect.top + 6;
+      let left = clamp(rect.left - boxRect.left + rect.width/2 - pw/2, 4, boxRect.width - pw - 4);
+      menu.style.position = 'absolute';
+      menu.style.top = top + 'px';
+      menu.style.left = left + 'px';
+    }
+
+    function attachViewerDrag(img, id){
+      let startX, startY, moved=false, ghost=null;
+      img.addEventListener('pointerdown', (e)=>{
+        e.stopPropagation();
+        img.setPointerCapture(e.pointerId);
+        startX = e.clientX; startY = e.clientY; moved=false;
+      });
+      img.addEventListener('pointermove', (e)=>{
+        if(!img.hasPointerCapture(e.pointerId)) return;
+        const dx = e.clientX-startX, dy = e.clientY-startY;
+        if(!moved && (Math.abs(dx)>6 || Math.abs(dy)>6)){
+          moved = true;
+          closeViewerMenu();
+          ghost = document.createElement('div');
+          ghost.className = 'flying-ghost';
+          ghost.style.backgroundImage = `url(${cards[id].img})`;
+          document.body.appendChild(ghost);
+          img.style.opacity = '.25';
+        }
+        if(moved && ghost){
+          ghost.style.left = (e.clientX - 29)+'px';
+          ghost.style.top = (e.clientY - 40)+'px';
+        }
+      });
+      img.addEventListener('pointerup', (e)=>{
+        if(moved && ghost){
+          ghost.remove(); ghost=null;
+          img.style.opacity = '';
+          if(isOverHandZone(e.clientX, e.clientY)){
+            viewedIds.delete(id);
+            moveToHand(id);
+            rebuildGrid();
+            return;
+          }
+          const rect = field.getBoundingClientRect();
+          const inField = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+          if(inField){
+            const relX = ((e.clientX - rect.left)/rect.width)*100;
+            const relY = ((e.clientY - rect.top)/rect.height)*100;
+            viewedIds.delete(id);
+            moveToField(id, relX, relY);
+            rebuildGrid();
+          }
+        } else if(!moved){
+          showViewerMenu(img, id);
+        }
+      });
+      const cancelViewerDrag = ()=>{
+        if(ghost){ ghost.remove(); ghost=null; img.style.opacity=''; }
+      };
+      img.addEventListener('pointercancel', cancelViewerDrag);
+      img.addEventListener('lostpointercapture', cancelViewerDrag);
+    }
+
+    function rebuildGrid(){
+      closeViewerMenu();
+      grid.innerHTML = '';
+      const stillInDeck = currentViewed();
+      stillInDeck.forEach((id, i)=>{
+        const c = cards[id];
+        const item = document.createElement('div');
+        item.className = 'viewer-item';
+        const img = document.createElement('div');
+        img.className = 'card';
+        img.style.backgroundImage = `url(${c.img})`;
+        img.style.cursor = 'pointer';
+        attachViewerDrag(img, id);
+        const order = document.createElement('div');
+        order.className = 'viewer-order';
+        order.textContent = (i+1) + '枚目';
+        item.appendChild(img);
+        item.appendChild(order);
+        grid.appendChild(item);
+      });
+      if(stillInDeck.length===0){
+        overlay.remove();
+        return;
+      }
+    }
+    rebuildGrid();
+
+    const shuffleBottomBtn = document.createElement('button');
+    shuffleBottomBtn.className = 'all-btn viewer-wide-btn';
+    shuffleBottomBtn.textContent = 'カードをシャッフルして山札の下へ';
+    shuffleBottomBtn.onclick = ()=>{
+      const ids = currentViewed();
+      if(ids.length>0){
+        pushHistory();
+        ids.forEach(id=> removeFromAllOrders(id));
+        shuffle(ids);
+        ids.forEach(id=> deckOrder.push(id));
+        viewedIds.clear();
+        renderPlay();
+      }
+      overlay.remove();
+    };
+
+    const close = document.createElement('button');
+    close.className = 'viewer-close-btn viewer-wide-btn';
+    close.textContent = '閉じる';
+    close.onclick = ()=> overlay.remove();
+
+    box.appendChild(p); box.appendChild(grid);
+    box.appendChild(shuffleBottomBtn);
+    box.appendChild(close);
+    box.style.position = 'relative';
+    box.onclick = (e)=>{
+      if(!e.target.closest('.popover') && !e.target.closest('.card')) closeViewerMenu();
+    };
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  }
+
+  // ドラッグ中断などで取り残されたゴースト（残像）を全て除去し、隠されたカードを復元する
+  function cleanupGhosts(){
+    document.querySelectorAll('.flying-ghost').forEach(n=> n.remove());
+  }
+
+  function closePopover(){
+    selectedId = null;
+    const p = document.querySelector('.popover');
+    if(p) p.remove();
+  }
+
+  function showPopover(anchorEl, id){
+    const rect = anchorEl.getBoundingClientRect();
+    closePopover();
+    selectedId = id;
+    renderPlay();
+    const c = cards[id];
+    const pop = document.createElement('div');
+    pop.className = 'popover';
+
+    const buttons = [];
+    if(c.zone==='hand'){
+      buttons.push(['場に出す', ()=>{ const s = findFreeFieldSpot(); moveToField(id, s.x, s.y); }]);
+      buttons.push(['山札の上に置く', ()=>moveToDeckTop(id)]);
+      buttons.push(['山札の下に置く', ()=>moveToDeckBottom(id), 'danger']);
+    } else if(c.zone==='field'){
+      buttons.push(['90度回転', ()=>rotateCard(id)]);
+      buttons.push([c.faceDown ? '表にする' : '裏返す', ()=>flipCard(id)]);
+      buttons.push(['山札の上に置く', ()=>moveToDeckTop(id)]);
+      buttons.push(['山札の下に置く', ()=>moveToDeckBottom(id), 'danger']);
+    }
+    buttons.forEach(([label,fn,cls])=>{
+      const b = document.createElement('button');
+      b.textContent = label;
+      if(cls) b.className = cls;
+      b.onclick = (e)=>{ e.stopPropagation(); fn(); };
+      pop.appendChild(b);
+    });
+    document.body.appendChild(pop);
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let top = rect.top - ph - 8;
+    if(top < 4) top = rect.bottom + 8;
+    let left = clamp(rect.left + rect.width/2 - pw/2, 6, window.innerWidth - pw - 6);
+    pop.style.top = top+'px';
+    pop.style.left = left+'px';
+  }
+
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.popover') && !e.target.closest('.card') && !e.target.closest('.stack-visual')){
+      closePopover(); renderPlay();
+    }
+  });
+
+  function makeCardEl(c){
+    const el = document.createElement('div');
+    el.className = 'card' + (c.faceDown ? ' face-down' : '');
+    if(!c.faceDown){ el.style.backgroundImage = `url(${c.img})`; }
+    el.dataset.id = c.id;
+    return el;
+  }
+
+  function renderPlay(){
+    $('cDeck').textContent = deckOrder.length;
+    $('cHand').textContent = handOrder.length;
+    $('cField').textContent = Object.values(cards).filter(c=>c.zone==='field').length;
+
+    // deck visual
+    deckVisual.innerHTML = '';
+    if(deckOrder.length===0){
+      deckVisual.innerHTML = '<div class="stack-empty">空</div>';
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'deck-stack';
+      wrap.style.position='relative'; wrap.style.width='100%'; wrap.style.height='100%'; wrap.style.cursor='pointer';
+      const layers = Math.min(3, deckOrder.length);
+      for(let i=0;i<layers;i++){
+        const back = document.createElement('div');
+        back.className = 'card-back';
+        wrap.appendChild(back);
+      }
+      const badge = document.createElement('div');
+      badge.className = 'stack-count';
+      badge.textContent = deckOrder.length;
+      wrap.appendChild(badge);
+      attachDeckPress(wrap);
+      deckVisual.appendChild(wrap);
+    }
+
+    // hand row
+    handRow.innerHTML = '';
+
+    const containerWidth = handRow.clientWidth || 260;
+    const cardW = 58;
+    const availForHand = Math.max(containerWidth - 4, cardW);
+    const n = handOrder.length;
+    let step = 42; // default spacing between card starts
+    if(n>1){
+      const neededFull = cardW + (n-1)*step;
+      if(neededFull > availForHand){
+        step = Math.max(9, (availForHand - cardW)/(n-1));
+      }
+    }
+
+    handOrder.forEach((id,i)=>{
+      const c = cards[id];
+      const el = makeCardEl(c);
+      if(id===selectedId) el.classList.add('selected');
+      if(i>0) el.style.marginLeft = (step - cardW)+'px';
+      attachHandDrag(el, c);
+      handRow.appendChild(el);
+    });
+
+    // field cards
+    field.querySelectorAll('.card').forEach(node=>node.remove());
+    const anyCard = Object.keys(cards).length>0;
+    emptyHint.style.display = anyCard ? 'none' : 'flex';
+
+    Object.values(cards).filter(c=>c.zone==='field').forEach(c=>{
+      const el = makeCardEl(c);
+      el.style.left = c.x+'%';
+      el.style.top = c.y+'%';
+      el.style.transform = `translate(-50%,-50%) rotate(${c.rot}deg)`;
+      el.style.zIndex = c.z || 1;
+      if(c.id===selectedId || multiSel.has(c.id)) el.classList.add('selected');
+      attachFieldDrag(el, c);
+      field.appendChild(el);
+    });
+  }
+
+  function attachFieldDrag(el, c){
+    let startX, startY, moved=false, ghost=null;
+    let groupMode = false, groupStart = null, groupGhost = null;
+    el.addEventListener('pointerdown', (e)=>{
+      e.stopPropagation();
+      cleanupGhosts();
+      el.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY; moved=false;
+      groupMode = multiSel.has(c.id) && multiSel.size>1;
+      if(groupMode){
+        groupStart = {};
+        multiSel.forEach(id=>{ if(cards[id]) groupStart[id] = {x:cards[id].x, y:cards[id].y}; });
+      } else {
+        c.z = ++zCounter;
+        el.style.zIndex = c.z;
+      }
+    });
+    el.addEventListener('pointermove', (e)=>{
+      if(!el.hasPointerCapture(e.pointerId)) return;
+      const dx = e.clientX-startX, dy = e.clientY-startY;
+      if(!moved && (Math.abs(dx)>4 || Math.abs(dy)>4)){
+        moved = true;
+        if(groupMode) pushHistory();
+        if(!groupMode){
+          ghost = document.createElement('div');
+          ghost.className = 'flying-ghost' + (c.faceDown ? ' card-back' : '');
+          if(!c.faceDown) ghost.style.backgroundImage = `url(${c.img})`;
+          if(c.rot) ghost.style.transform = `scale(1.08) rotate(${c.rot}deg)`;
+          document.body.appendChild(ghost);
+          el.style.opacity = '0';
+        }
+      }
+      if(moved){
+        if(groupMode){
+          const fr = field.getBoundingClientRect();
+          const inField = e.clientX>=fr.left && e.clientX<=fr.right && e.clientY>=fr.top && e.clientY<=fr.bottom;
+          if(inField){
+            // フィールド内：束をそのままライブ移動
+            if(groupGhost){
+              groupGhost.remove(); groupGhost = null;
+              multiSel.forEach(id=>{
+                const node = field.querySelector(`.card[data-id="${id}"]`);
+                if(node) node.style.opacity = '';
+              });
+            }
+            const dxPct = (dx/fr.width)*100, dyPct = (dy/fr.height)*100;
+            multiSel.forEach(id=>{
+              const gc = cards[id];
+              if(!gc || !groupStart[id]) return;
+              gc.x = clamp(groupStart[id].x + dxPct, 4, 96);
+              gc.y = clamp(groupStart[id].y + dyPct, 6, 94);
+              const node = field.querySelector(`.card[data-id="${id}"]`);
+              if(node){ node.style.left = gc.x+'%'; node.style.top = gc.y+'%'; }
+            });
+          } else {
+            // フィールド外：枠に引っかからないよう束のゴーストに切り替える
+            if(!groupGhost){
+              groupGhost = document.createElement('div');
+              groupGhost.className = 'flying-ghost group-ghost';
+              const ids = [...multiSel].filter(id=> cards[id]).slice(0, 3);
+              ids.forEach((id, i)=>{
+                const g = document.createElement('div');
+                g.className = 'g' + (cards[id].faceDown ? ' card-back' : '');
+                if(!cards[id].faceDown) g.style.backgroundImage = `url(${cards[id].img})`;
+                g.style.transform = `translate(${i*4}px, ${-i*4}px)`;
+                groupGhost.appendChild(g);
+              });
+              const badge = document.createElement('div');
+              badge.className = 'stack-count';
+              badge.textContent = multiSel.size;
+              groupGhost.appendChild(badge);
+              document.body.appendChild(groupGhost);
+              // 場のカードは元の位置に戻して薄くする
+              multiSel.forEach(id=>{
+                const gc = cards[id];
+                if(gc && groupStart[id]){ gc.x = groupStart[id].x; gc.y = groupStart[id].y; }
+                const node = field.querySelector(`.card[data-id="${id}"]`);
+                if(node){
+                  node.style.left = gc.x+'%'; node.style.top = gc.y+'%';
+                  node.style.opacity = '.18';
+                }
+              });
+            }
+            groupGhost.style.left = (e.clientX - 29)+'px';
+            groupGhost.style.top = (e.clientY - 40)+'px';
+          }
+        } else if(ghost){
+          ghost.style.left = (e.clientX - 29)+'px';
+          ghost.style.top = (e.clientY - 40)+'px';
+        }
+      }
+    });
+    const endDrag = (e)=>{
+      if(moved && groupMode){
+        if(groupGhost){ groupGhost.remove(); groupGhost = null; }
+        if(isOverHandZone(e.clientX, e.clientY)){
+          groupMoveToHand();
+          return;
+        }
+        renderPlay();
+        return;
+      }
+      if(moved && ghost){
+        ghost.remove(); ghost=null;
+        el.style.opacity = '';
+        if(isOverHandZone(e.clientX, e.clientY)){
+          moveToHand(c.id);
+          return;
+        }
+        const rect = field.getBoundingClientRect();
+        const inField = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
+        if(inField){
+          pushHistory();
+          c.x = clamp(((e.clientX - rect.left)/rect.width)*100, 4, 96);
+          c.y = clamp(((e.clientY - rect.top)/rect.height)*100, 6, 94);
+        }
+        renderPlay();
+      } else if(!moved){
+        if(groupMode){
+          showGroupMenu(el);
+        } else {
+          showPopover(el, c.id);
+        }
+      }
+    };
+    el.addEventListener('pointerup', endDrag);
+    const cancelDrag = ()=>{
+      if(ghost){ ghost.remove(); ghost=null; el.style.opacity=''; renderPlay(); }
+      if(groupGhost){ groupGhost.remove(); groupGhost=null; renderPlay(); }
+    };
+    el.addEventListener('pointercancel', cancelDrag);
+    el.addEventListener('lostpointercapture', cancelDrag);
+  }
+
+  function groupRotate(){
+    pushHistory();
+    multiSel.forEach(id=>{
+      if(cards[id] && cards[id].zone==='field') cards[id].rot = (cards[id].rot+90)%360;
+    });
+    renderFieldOnly();
+  }
+  function groupFlip(){
+    pushHistory();
+    multiSel.forEach(id=>{
+      if(cards[id] && cards[id].zone==='field') cards[id].faceDown = !cards[id].faceDown;
+    });
+    renderFieldOnly();
+  }
+  // ポップアップを閉じずに盤面だけ更新する（グループ連続操作用）
+  function renderFieldOnly(){
+    const pop = document.querySelector('.popover');
+    renderPlay();
+    if(pop) document.body.appendChild(pop); // renderPlayはポップを消さないが、念のため最前面へ
+  }
+  function groupStack(){
+    // 選択カードを最後に触ったカードの位置にきっちり重ねる
+    const ids = [...multiSel].filter(id=> cards[id] && cards[id].zone==='field');
+    if(ids.length===0) return;
+    pushHistory();
+    const top = ids.map(id=>cards[id]).reduce((a,b)=> ((b.z||0)>(a.z||0)) ? b : a);
+    const tx = top.x, ty = top.y;
+    // 現在の重なり順を保ったまま積み直す
+    ids.sort((a,b)=> (cards[a].z||0) - (cards[b].z||0));
+    ids.forEach(id=>{
+      const c = cards[id];
+      c.x = tx; c.y = ty;
+      c.z = ++zCounter;
+    });
+    renderFieldOnly();
+  }
+
+  function groupAlign(){
+    // 選択カードを横1列に、少し重ねながら左から整列させる
+    const ids = [...multiSel].filter(id=> cards[id] && cards[id].zone==='field');
+    if(ids.length===0) return;
+    pushHistory();
+    const rect = field.getBoundingClientRect();
+    const stepX = (58 * 0.88 / rect.width) * 100;
+    // 現在の左右の並びを保つ
+    ids.sort((a,b)=> cards[a].x - cards[b].x);
+    // 高さは選択カードの平均位置に揃える
+    const avgY = clamp(ids.reduce((s,id)=> s + cards[id].y, 0) / ids.length, 8, 92);
+    let x = 8;
+    ids.forEach(id=>{
+      const c = cards[id];
+      c.x = clamp(x, 6, 94);
+      c.y = avgY;
+      c.rot = 0;
+      c.z = ++zCounter;
+      x += stepX;
+    });
+    renderFieldOnly();
+  }
+
+  function groupShuffleToDeckBottom(){
+    pushHistory();
+    const ids = [...multiSel].filter(id=> cards[id] && cards[id].zone==='field');
+    shuffle(ids);
+    ids.forEach(id=>{
+      removeFromAllOrders(id);
+      const c = cards[id];
+      c.zone='deck'; c.faceDown=true; c.rot=0;
+      deckOrder.push(id);
+    });
+    multiSel.clear();
+    closePopover();
+    renderPlay();
+  }
+
+  function showGroupMenu(anchorEl){
+    const rect = anchorEl.getBoundingClientRect();
+    closePopover();
+    const pop = document.createElement('div');
+    pop.className = 'popover';
+    const items = [
+      [`90度回転（${multiSel.size}枚）`, groupRotate],
+      [`裏返す（${multiSel.size}枚）`, groupFlip],
+      [`重ねる（${multiSel.size}枚）`, groupStack],
+      [`整列（${multiSel.size}枚）`, groupAlign],
+      [`シャッフルしてから山札の下（${multiSel.size}枚）`, groupShuffleToDeckBottom]
+    ];
+    items.forEach(([label,fn])=>{
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.onclick = (e)=>{ e.stopPropagation(); fn(); };
+      pop.appendChild(b);
+    });
+    document.body.appendChild(pop);
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let top = rect.top - ph - 8;
+    if(top < 4) top = rect.bottom + 8;
+    let left = clamp(rect.left + rect.width/2 - pw/2, 6, window.innerWidth - pw - 6);
+    pop.style.top = top+'px';
+    pop.style.left = left+'px';
+  }
+
+  function attachHandDrag(el, c){
+    let startX, startY, moved=false, ghost=null;
+    let ctx = null; // 並べ替え用：ドラッグ開始時の各カードの位置を記憶
+    el.addEventListener('pointerdown', (e)=>{
+      e.stopPropagation();
+      cleanupGhosts();
+      el.setPointerCapture(e.pointerId);
+      startX = e.clientX; startY = e.clientY; moved=false;
+    });
+    el.addEventListener('pointermove', (e)=>{
+      if(!el.hasPointerCapture(e.pointerId)) return;
+      const dx = e.clientX-startX, dy = e.clientY-startY;
+      if(!moved && (Math.abs(dx)>6 || Math.abs(dy)>6)){
+        moved = true;
+        ghost = document.createElement('div');
+        ghost.className = 'flying-ghost';
+        ghost.style.backgroundImage = `url(${c.img})`;
+        document.body.appendChild(ghost);
+        // 元のカードは持ち上げた表現（半透明のプレースホルダー）
+        el.style.opacity = '.18';
+        // 並べ替えの準備：現時点の並びと位置を記録し、滑らかに動くようtransitionを付与
+        const nodes = [...handRow.querySelectorAll('.card')];
+        if(nodes.length >= 2){
+          const rects = nodes.map(n=> n.getBoundingClientRect());
+          const fromIdx = handOrder.indexOf(c.id);
+          const step = rects.length>=2 ? (rects[1].left - rects[0].left) : 58;
+          nodes.forEach(n=>{ n.style.transition = 'transform .16s ease'; n.style.willChange = 'transform'; });
+          ctx = {nodes, rects, fromIdx, step, insertIdx: fromIdx};
+        }
+      }
+      if(moved && ghost){
+        ghost.style.left = (e.clientX - 29)+'px';
+        ghost.style.top = (e.clientY - 40)+'px';
+        // 手札ゾーン上にいる間はリアルタイムに隙間を移動させる
+        if(ctx){
+          let g;
+          if(isOverHandZone(e.clientX, e.clientY)){
+            g = 0;
+            ctx.rects.forEach((r, j)=>{
+              if(j === ctx.fromIdx) return;
+              if(e.clientX > r.left + r.width/2) g++;
+            });
+          } else {
+            g = ctx.fromIdx; // ゾーン外に出たら隙間を元の位置へ戻す
+          }
+          if(g !== ctx.insertIdx){
+            ctx.insertIdx = g;
+            ctx.nodes.forEach((n, j)=>{
+              if(j === ctx.fromIdx){ return; }
+              let shift = 0;
+              if(g < ctx.fromIdx && j >= g && j < ctx.fromIdx) shift = ctx.step;        // 隙間が左へ→間のカードは右へ
+              else if(g > ctx.fromIdx && j > ctx.fromIdx && j <= g) shift = -ctx.step;  // 隙間が右へ→間のカードは左へ
+              n.style.transform = shift ? `translateX(${shift}px)` : '';
+            });
+          }
+        }
+      }
+    });
+    el.addEventListener('pointerup', (e)=>{
+      if(moved && ghost){
+        const fieldRect = field.getBoundingClientRect();
+        const inField = e.clientX>=fieldRect.left && e.clientX<=fieldRect.right && e.clientY>=fieldRect.top && e.clientY<=fieldRect.bottom;
+        ghost.remove(); ghost=null;
+        if(inField){
+          moveToField(c.id, ((e.clientX - fieldRect.left)/fieldRect.width)*100, ((e.clientY - fieldRect.top)/fieldRect.height)*100);
+        } else if(ctx && isOverHandZone(e.clientX, e.clientY) && ctx.insertIdx !== ctx.fromIdx){
+          pushHistory();
+          handOrder.splice(ctx.fromIdx, 1);
+          handOrder.splice(ctx.insertIdx, 0, c.id);
+          renderPlay();
+        } else {
+          renderPlay(); // 変更なし：見た目を元に戻す
+        }
+        ctx = null;
+      } else {
+        showPopover(el, c.id);
+      }
+    });
+    const cancelHandDrag = ()=>{
+      if(ghost){ ghost.remove(); ghost=null; ctx = null; renderPlay(); }
+    };
+    el.addEventListener('pointercancel', cancelHandDrag);
+    el.addEventListener('lostpointercapture', cancelHandDrag);
+  }
+
+  $('btnUndo').onclick = ()=> undo();
+  $('btnShuffle').onclick = ()=>{
+    pushHistory();
+    shuffle(deckOrder);
+    renderPlay();
+    deckVisual.classList.remove('shuffling');
+    void deckVisual.offsetWidth; // アニメーションを再トリガーするためのリフロー
+    deckVisual.classList.add('shuffling');
+    setTimeout(()=> deckVisual.classList.remove('shuffling'), 550);
+  };
+  $('btnRestart').onclick = ()=>{
+    if(skipRestartConfirm){
+      pushHistory();
+      startNewSessionFromLibrary();
+      return;
+    }
+    showConfirm('現在の手札・場をリセットして、\n同じ構成の山札で最初からやり直しますか？', ()=>{
+      pushHistory();
+      startNewSessionFromLibrary();
+    });
+  };
+  $('btnEditDeck').onclick = ()=>{ buildReturnTo = 'play'; goToScreen('build'); };
+
+  // ================= screen switching =================
+  function goToScreen(name){
+    cleanupGhosts();
+    currentScreen = name;
+    screenTitleView.classList.toggle('active', name==='title');
+    screenHowto.classList.toggle('active', name==='howto');
+    screenDeckSelect.classList.toggle('active', name==='deckselect');
+    screenBuild.classList.toggle('active', name==='build');
+    screenPlay.classList.toggle('active', name==='play');
+    screenSettings.classList.toggle('active', name==='settings');
+    buildBtns.style.display = name==='build' ? 'flex' : 'none';
+    playBtns.style.display = name==='play' ? 'flex' : 'none';
+    deckSelectBtns.style.display = name==='deckselect' ? 'flex' : 'none';
+
+    const titleBlock = $('headerTitleBlock');
+    if(name==='title'){
+      // タイトル画面では左上の表示なし（中央のロゴのみ）
+      setHeaderTitle('', '');
+    } else if(name==='howto'){
+      setHeaderTitle('使い方', 'このアプリでできること');
+    } else if(name==='deckselect'){
+      setHeaderTitle('デッキ選択', '使うデッキを選ぶか、新しく作りましょう');
+      renderDeckSelect();
+    } else if(name==='build'){
+      setHeaderTitle('', '');
+      reorderMode = false;
+      updateReorderBtn();
+      renderBuild();
+    } else if(name==='play'){
+      setHeaderTitle('', '');
+      renderPlay();
+    } else {
+      setHeaderTitle('設定', '山札の色や画面移動ができます');
+      renderSettings();
+    }
+    function setHeaderTitle(t, sub){
+      screenTitle.textContent = t;
+      screenSubtitle.textContent = sub;
+      screenSubtitle.style.display = sub ? '' : 'none';
+      titleBlock.style.display = (t || sub) ? '' : 'none';
+      const d = currentDeck();
+      const pdn = $('playDeckName');
+      if(name==='play' && d){
+        pdn.textContent = d.name;
+        pdn.style.display = 'block';
+      } else if(name==='build'){
+        pdn.textContent = 'デッキ作成';
+        pdn.style.display = 'block';
+      } else {
+        pdn.style.display = 'none';
+      }
+    }
+  }
+
+  // 起動：保存データを読み込んでから開始（読み込み後に保存を有効化）
+  loadPersisted().then(()=>{
+    persistReady = true;
+    applyDeckColor();
+    updateGameSettingsUI();
+    goToScreen('title');
+  });
+})();
+</script>
+</body>
+</html>
