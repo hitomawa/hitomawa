@@ -668,13 +668,19 @@
 <script>
 (function(){
   // ブラウザ標準のピンチ拡大・ダブルタップ拡大を無効化（iOS Safari対策）
-  document.addEventListener('gesturestart', (e)=> e.preventDefault());
-  let lastTouchEnd = 0;
-  document.addEventListener('touchend', (e)=>{
-    const now = Date.now();
-    if(now - lastTouchEnd < 350) e.preventDefault(); // ダブルタップ検出時はズームさせない
-    lastTouchEnd = now;
-  }, {passive:false});
+  // ※アプリ版（Capacitor）はブラウザのズーム機能自体が存在しないため、
+  //   この対策を適用するとボタンの連打まで巻き添えでブロックしてしまう。
+  //   Capacitorのネイティブアプリ内で動いているときはこの対策をスキップする。
+  const isNativeApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if(!isNativeApp){
+    document.addEventListener('gesturestart', (e)=> e.preventDefault());
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e)=>{
+      const now = Date.now();
+      if(now - lastTouchEnd < 350) e.preventDefault(); // ダブルタップ検出時はズームさせない
+      lastTouchEnd = now;
+    }, {passive:false});
+  }
 
   const $ = (id)=>document.getElementById(id);
 
