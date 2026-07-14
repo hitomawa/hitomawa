@@ -1,0 +1,42 @@
+workflows:
+  ios-workflow:
+    name: Hitomawa iOS Build
+    max_build_duration: 60
+    integrations:
+      app_store_connect: Hitomawa Key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.hitomawa.app
+      vars:
+        APP_STORE_APPLE_ID: 6790680487
+      node: latest
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install npm dependencies
+        script: npm install
+      - name: Capacitor sync
+        script: npx cap sync ios
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -maxdepth 2 -type f | xargs -I {} dirname {} | xargs -I {} sh -c 'cd "{}" && pod install'
+      - name: Increment build number
+        script: |
+          cd ios/App
+          agvtool new-version -all $(($(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID") + 1))
+      - name: Build ipa for App Store distribution
+        script: |
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
