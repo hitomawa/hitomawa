@@ -1,4 +1,4 @@
-workflows:
+﻿workflows:
   ios-workflow:
     name: Hitomawa iOS Build
     max_build_duration: 60
@@ -10,6 +10,7 @@ workflows:
         bundle_identifier: com.hitomawa.app
       vars:
         APP_STORE_APPLE_ID: 6790680487
+        BUNDLE_ID: com.hitomawa.app
       node: latest
       xcode: latest
       cocoapods: default
@@ -20,6 +21,9 @@ workflows:
         script: npx cap sync ios
       - name: Set up code signing
         script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
           xcode-project use-profiles
       - name: Install CocoaPods dependencies
         script: |
