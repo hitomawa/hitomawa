@@ -393,14 +393,18 @@
   #skipConfirmToggle.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
 
   /* ---------- title screen ---------- */
-  .title-center{
-    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
-    text-align:center;
+  /* タイトル画面：ヘッダーの余白ぶんだけ外へ広げ、円が画面の縁まで届くようにする */
+  #screenTitleView{
+    margin:-16px -14px;
+    padding:16px 14px;
     background:
       radial-gradient(circle at 82% 16%, rgba(255,203,5,.5) 0 92px, transparent 93px),
       radial-gradient(circle at 12% 88%, rgba(255,203,5,.22) 0 62px, transparent 63px),
       var(--surface);
-    border-radius:var(--radius-m);
+  }
+  .title-center{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    text-align:center;
   }
   .title-logo{
     font-size:46px; font-weight:900; color:var(--ink); letter-spacing:.14em;
@@ -604,7 +608,7 @@
 
     <div class="field" id="field">
       <div class="field-label">FIELD</div>
-      <div class="empty-hint" id="emptyHint">手札のカードをドラッグしてここに出すか、<br>タップして「場に出す」を選んでください</div>
+      <div class="empty-hint" id="emptyHint">手札のカードをドラッグしてここに出すか、<br>タップして「フィールドに出す」を選んでください</div>
     </div>
 
     <div class="tray">
@@ -1381,7 +1385,7 @@
   };
   $('btnClearLib').onclick = ()=>{
     if(library.length===0 && extraLibrary.length===0) return;
-    showConfirm('登録したカードをすべて削除しますか？\n（メイン・追加の両方）', ()=>{
+    showConfirm('登録したカードをすべて削除しますか？', ()=>{
       library.length = 0;
       extraLibrary.length = 0;
       renderBuild();
@@ -1985,7 +1989,7 @@
 
     const buttons = [];
     if(c.zone==='hand'){
-      buttons.push(['場に出す', ()=>{ const s = findFreeFieldSpot(); moveToField(id, s.x, s.y); }]);
+      buttons.push(['フィールドに出す', ()=>{ const s = findFreeFieldSpot(); moveToField(id, s.x, s.y); }]);
       buttons.push(['山札の上に置く', ()=>moveToDeckTop(id)]);
       buttons.push(['山札の下に置く', ()=>moveToDeckBottom(id), 'danger']);
     } else if(c.zone==='field'){
