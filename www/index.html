@@ -41,8 +41,9 @@
     --card-w:58px;
     --card-h:81px;
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; scrollbar-width:none; touch-action:manipulation;}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; scrollbar-width:none; touch-action:manipulation; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;}
   *::-webkit-scrollbar{display:none;}
+  img{-webkit-user-drag:none; -webkit-touch-callout:none;}
   html,body{height:100%;}
   html{overflow:hidden; overscroll-behavior:none;}
   body{
@@ -576,7 +577,7 @@
         <div class="howto-num">4</div>
         <div class="howto-body">
           <div class="howto-title">山札のカード</div>
-          <div class="howto-text">山札をタップするとメニューが開き、「山札を見る」で上から好きな枚数を確認できます。見ているカードはドラッグすることで手札やフィールドに移動できます。</div>
+          <div class="howto-text">山札をタップするとメニューが開き、「山札を見る」で上から好きな枚数を確認できます。見ているカードをタップすると、手札に加える・フィールドに出すなどの操作を選べます。</div>
         </div>
       </div>
 
@@ -702,6 +703,11 @@
       lastTouchEnd = now;
     }, {passive:false});
   }
+
+  // 長押しした時にiOS標準のテキスト/画像選択（青いハイライト）や
+  // コールアウトメニューが出てしまうのを防ぐ
+  document.addEventListener('contextmenu', (e)=> e.preventDefault());
+  document.addEventListener('dragstart', (e)=> e.preventDefault());
 
   const $ = (id)=>document.getElementById(id);
 
@@ -945,7 +951,7 @@
     const box = document.createElement('div');
     box.className = 'confirm-box';
     const p = document.createElement('p');
-    p.textContent = '広告が非表示となり、保存できるデッキの数が無制限になります。\n※試作品のため実際の課金は発生しません';
+    p.textContent = '広告が非表示となり、保存できるデッキの数が最大（20個）まで拡張されます。\n※試作品のため実際の課金は発生しません';
     const actions = document.createElement('div');
     actions.className = 'confirm-actions';
     const cancel = document.createElement('button');
@@ -1180,7 +1186,7 @@
       subName.textContent = '無制限プランに加入';
       const subDesc = document.createElement('div');
       subDesc.className = 'deck-item-count';
-      subDesc.textContent = '広告が非表示となり、保存できるデッキの数が無制限になります。';
+      subDesc.textContent = '広告が非表示となり、保存できるデッキの数が最大（20個）まで拡張されます。';
       const subActions = document.createElement('div');
       subActions.className = 'deck-item-actions';
       const subBtn = document.createElement('button');
@@ -1647,8 +1653,13 @@
   }
 
   // ---- rubber-band multi select on empty field ----
+  let cancelRubberBand = ()=>{};
   (function setupRubberBand(){
     let sx, sy, rectEl = null, active = false;
+    cancelRubberBand = ()=>{
+      active = false;
+      if(rectEl){ rectEl.remove(); rectEl = null; }
+    };
     field.addEventListener('pointerdown', (e)=>{
       // カードの上はカード側でstopPropagationされるので、ここに来るのは空白のみ
       active = true;
@@ -1698,10 +1709,8 @@
         if(multiSel.size>0){ multiSel.clear(); renderPlay(); }
       }
     });
-    field.addEventListener('pointercancel', ()=>{
-      active = false;
-      if(rectEl){ rectEl.remove(); rectEl = null; }
-    });
+    field.addEventListener('pointercancel', cancelRubberBand);
+    field.addEventListener('lostpointercapture', cancelRubberBand);
   })();
 
   function moveToHandSilent(id){
@@ -1899,8 +1908,11 @@
       const menu = document.createElement('div');
       menu.className = 'popover';
       const actions = [
+        ['手札に加える', ()=>{ viewedIds.delete(id); moveToHand(id); rebuildGrid(); }],
+        ['フィールドに出す', ()=>{ const s = findFreeFieldSpot(); viewedIds.delete(id); moveToField(id, s.x, s.y); rebuildGrid(); }],
         ['山札の上に置く', ()=> toDeckTopFromViewer(id)],
-        ['山札の下に置く', ()=> toDeckBottomFromViewer(id)]
+        ['山札の下に置く', ()=> toDeckBottomFromViewer(id)],
+        ['表示', ()=>{ closeViewerMenu(); showImageViewer(cards[id].img); }]
       ];
       actions.forEach(([label,fn])=>{
         const b = document.createElement('button');
@@ -1920,58 +1932,11 @@
       menu.style.left = left + 'px';
     }
 
-    function attachViewerDrag(img, id){
-      let startX, startY, moved=false, ghost=null;
-      img.addEventListener('pointerdown', (e)=>{
+    function attachViewerTap(img, id){
+      img.addEventListener('click', (e)=>{
         e.stopPropagation();
-        img.setPointerCapture(e.pointerId);
-        startX = e.clientX; startY = e.clientY; moved=false;
+        showViewerMenu(img, id);
       });
-      img.addEventListener('pointermove', (e)=>{
-        if(!img.hasPointerCapture(e.pointerId)) return;
-        const dx = e.clientX-startX, dy = e.clientY-startY;
-        if(!moved && (Math.abs(dx)>6 || Math.abs(dy)>6)){
-          moved = true;
-          closeViewerMenu();
-          ghost = document.createElement('div');
-          ghost.className = 'flying-ghost';
-          ghost.style.backgroundImage = `url(${cards[id].img})`;
-          document.body.appendChild(ghost);
-          img.style.opacity = '.25';
-        }
-        if(moved && ghost){
-          ghost.style.left = (e.clientX - 29)+'px';
-          ghost.style.top = (e.clientY - 40)+'px';
-        }
-      });
-      img.addEventListener('pointerup', (e)=>{
-        if(moved && ghost){
-          ghost.remove(); ghost=null;
-          img.style.opacity = '';
-          if(isOverHandZone(e.clientX, e.clientY)){
-            viewedIds.delete(id);
-            moveToHand(id);
-            rebuildGrid();
-            return;
-          }
-          const rect = field.getBoundingClientRect();
-          const inField = e.clientX>=rect.left && e.clientX<=rect.right && e.clientY>=rect.top && e.clientY<=rect.bottom;
-          if(inField){
-            const relX = ((e.clientX - rect.left)/rect.width)*100;
-            const relY = ((e.clientY - rect.top)/rect.height)*100;
-            viewedIds.delete(id);
-            moveToField(id, relX, relY);
-            rebuildGrid();
-          }
-        } else if(!moved){
-          showViewerMenu(img, id);
-        }
-      });
-      const cancelViewerDrag = ()=>{
-        if(ghost){ ghost.remove(); ghost=null; img.style.opacity=''; }
-      };
-      img.addEventListener('pointercancel', cancelViewerDrag);
-      img.addEventListener('lostpointercapture', cancelViewerDrag);
     }
 
     function rebuildGrid(){
@@ -1986,7 +1951,7 @@
         img.className = 'card';
         img.style.backgroundImage = `url(${c.img})`;
         img.style.cursor = 'pointer';
-        attachViewerDrag(img, id);
+        attachViewerTap(img, id);
         const order = document.createElement('div');
         order.className = 'viewer-order';
         order.textContent = (i+1) + '枚目';
@@ -2036,6 +2001,8 @@
   // ドラッグ中断などで取り残されたゴースト（残像）を全て除去し、隠されたカードを復元する
   function cleanupGhosts(){
     document.querySelectorAll('.flying-ghost').forEach(n=> n.remove());
+    cancelRubberBand();
+    document.querySelectorAll('.select-rect').forEach(n=> n.remove());
   }
 
   function closePopover(){
