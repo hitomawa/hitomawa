@@ -268,7 +268,8 @@
     position:absolute; z-index:400; border:2px dashed var(--accent-deep);
     background:rgba(255,203,5,.14); border-radius:6px; pointer-events:none;
   }
-  .field .card.selected{outline:3px solid var(--accent); outline-offset:1px;}
+  /* 選択中のカードは黄色い枠が他のカードの下に隠れないよう最前面へ（インラインのz-indexより優先） */
+  .field .card.selected{outline:3px solid var(--accent); outline-offset:1px; z-index:9999 !important;}
   .field .card.dragging{cursor:grabbing;}
 
   .popover{
@@ -363,10 +364,9 @@
     max-height:312px; /* カード4列×3段＝12枚ぶん。超えたらスクロール */
     overflow-y:auto;
   }
-  .viewer-grid .card{touch-action:none;}
   .viewer-item{display:flex; flex-direction:column; align-items:center; gap:3px;}
   .viewer-order{font-size:9px; color:var(--muted); font-weight:600;}
-  .viewer-grid .card.selected{outline:3px solid var(--accent); outline-offset:1px;}
+  .viewer-grid .card.selected{outline:3px solid var(--accent); outline-offset:1px; position:relative; z-index:2;}
   .viewer-wide-btn{display:block; width:100%; margin-top:10px;}
   .viewer-close-btn{
     background:var(--accent); color:var(--accent-ink);
