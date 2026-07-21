@@ -361,8 +361,10 @@
   .viewer-box{width:302px; max-width:92vw;}
   .viewer-grid{
     display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start;
-    max-height:312px; /* カード4列×3段＝12枚ぶん。超えたらスクロール */
+    max-height:322px; /* カード4列×3段＝12枚ぶん。超えたらスクロール */
     overflow-y:auto;
+    /* スクロール領域の縁で選択カードの黄色い枠(外側4px)が切れないよう余白を確保 */
+    padding:5px;
   }
   .viewer-item{display:flex; flex-direction:column; align-items:center; gap:3px;}
   .viewer-order{font-size:9px; color:var(--muted); font-weight:600;}
