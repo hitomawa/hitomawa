@@ -308,6 +308,21 @@
     position:fixed; inset:0; z-index:500; background:rgba(28,28,34,.4);
     display:flex; align-items:center; justify-content:center; padding:24px;
   }
+  .imgview-overlay{
+    position:fixed; inset:0; z-index:600; background:rgba(20,20,24,.82);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; padding:20px;
+  }
+  .imgview-overlay img{
+    max-width:92vw; max-height:70vh; object-fit:contain;
+    border-radius:12px; box-shadow:0 14px 44px rgba(0,0,0,.5);
+    background:#fff;
+  }
+  .imgview-back{
+    width:210px; padding:14px 0; border-radius:999px;
+    background:var(--surface); color:var(--ink); border:1.5px solid var(--line);
+    font-size:14px; font-weight:800; cursor:pointer; letter-spacing:.03em;
+  }
   .confirm-box{
     background:var(--surface); border:none; border-radius:var(--radius-l);
     padding:22px 20px; width:min(92vw, 360px); text-align:center;
@@ -415,9 +430,9 @@
   .title-tagline{font-size:10px; color:var(--ink-soft); letter-spacing:.14em; margin-bottom:20px; font-weight:600;}
   .title-menu{display:flex; flex-direction:column; gap:10px; width:210px;}
   #btnUnlimited{
-    background:#d64545; border-color:#d64545;
+    background:#7ebdf6; border-color:#7ebdf6;
   }
-  #btnUnlimited:active{background:#c13a3a; border-color:#c13a3a;}
+  #btnUnlimited:active{background:#69ace9; border-color:#69ace9;}
   .title-menu .big-btn{width:100%;}
 
   /* ---------- howto ---------- */
@@ -2029,6 +2044,22 @@
     if(p) p.remove();
   }
 
+  // カード画像を大きく表示する
+  function showImageViewer(src){
+    const overlay = document.createElement('div');
+    overlay.className = 'imgview-overlay';
+    const img = document.createElement('img');
+    img.src = src;
+    const back = document.createElement('button');
+    back.className = 'imgview-back';
+    back.textContent = '戻る';
+    back.onclick = ()=> overlay.remove();
+    overlay.appendChild(img);
+    overlay.appendChild(back);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+
   function showPopover(anchorEl, id){
     const rect = anchorEl.getBoundingClientRect();
     closePopover();
@@ -2043,11 +2074,13 @@
       buttons.push(['フィールドに出す', ()=>{ const s = findFreeFieldSpot(); moveToField(id, s.x, s.y); }]);
       buttons.push(['山札の上に置く', ()=>moveToDeckTop(id)]);
       buttons.push(['山札の下に置く', ()=>moveToDeckBottom(id), 'danger']);
+      buttons.push(['表示', ()=>{ closePopover(); showImageViewer(c.img); }]);
     } else if(c.zone==='field'){
       buttons.push(['90度回転', ()=>rotateCard(id)]);
       buttons.push(['裏返す', ()=>flipCard(id)]);
       buttons.push(['山札の上に置く', ()=>moveToDeckTop(id)]);
       buttons.push(['山札の下に置く', ()=>moveToDeckBottom(id), 'danger']);
+      if(!c.faceDown) buttons.push(['表示', ()=>{ closePopover(); showImageViewer(c.img); }]);
     }
     buttons.forEach(([label,fn,cls])=>{
       const b = document.createElement('button');
