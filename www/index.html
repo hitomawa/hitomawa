@@ -310,15 +310,16 @@
   }
   .confirm-box{
     background:var(--surface); border:none; border-radius:var(--radius-l);
-    padding:22px 20px; max-width:300px; text-align:center;
+    padding:22px 20px; width:min(92vw, 360px); text-align:center;
     box-shadow:var(--shadow-float);
   }
   .confirm-box p{font-size:12px; line-height:1.8; color:var(--ink); margin:0 0 16px; font-weight:600; white-space:pre-line;}
   .howto-text, .lib-empty, .deck-list-empty, .empty-hint{text-wrap:pretty;}
   .confirm-actions{display:flex; gap:8px; justify-content:center;}
   .confirm-actions button{
-    flex:1; padding:13px 12px; border-radius:999px; font-size:13px; font-weight:800;
+    flex:1; padding:13px 8px; border-radius:999px; font-size:13px; font-weight:800;
     border:1.5px solid var(--line); cursor:pointer; letter-spacing:.03em;
+    white-space:nowrap; min-width:0;
   }
   .confirm-cancel{background:var(--surface); color:var(--ink);}
   .confirm-ok{background:var(--accent); color:var(--accent-ink); border-color:transparent;}
@@ -406,16 +407,17 @@
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
     text-align:center;
   }
-  .title-logo{
-    font-size:46px; font-weight:900; color:var(--ink); letter-spacing:.14em;
-    position:relative;
-  }
-  .title-logo::after{
-    content:""; display:block; width:56px; height:8px; border-radius:999px;
-    background:var(--accent); margin:10px auto 0;
+  .title-logo-img{
+    width:min(230px, 62%);
+    height:auto;
+    display:block;
   }
   .title-tagline{font-size:10px; color:var(--ink-soft); letter-spacing:.14em; margin-bottom:20px; font-weight:600;}
   .title-menu{display:flex; flex-direction:column; gap:10px; width:210px;}
+  #btnUnlimited{
+    background:#d64545; border-color:#d64545;
+  }
+  #btnUnlimited:active{background:#c13a3a; border-color:#c13a3a;}
   .title-menu .big-btn{width:100%;}
 
   /* ---------- howto ---------- */
@@ -517,11 +519,12 @@
 
   <div class="screen active" id="screenTitleView">
     <div class="title-center">
-      <div class="title-logo">ひとまわ</div>
+      <img class="title-logo-img" src="logo.png" alt="ひとまわ">
       <div class="title-tagline">いつでもどこでも、ひとりで回せる。</div>
       <div class="title-menu">
         <button class="big-btn" id="btnGoDeckSelect">デッキ選択</button>
         <button class="big-btn" id="btnGoHowto">使い方</button>
+        <button class="big-btn sub-btn" id="btnUnlimited">無制限プランに加入</button>
         <button class="big-btn sub-btn" id="btnContact">お問い合わせ</button>
       </div>
     </div>
@@ -534,7 +537,7 @@
         <div class="howto-num">1</div>
         <div class="howto-body">
           <div class="howto-title">デッキをつくる</div>
-          <div class="howto-text">「デッキ選択」→「新規作成」でデッキを作り、<br>カードの画像を読み込みます。</div>
+          <div class="howto-text">「デッキ選択」→「新規作成」でデッキを作り、カードの画像を読み込みます。</div>
         </div>
       </div>
 
@@ -542,7 +545,7 @@
         <div class="howto-num">2</div>
         <div class="howto-body">
           <div class="howto-title">カードを引く</div>
-          <div class="howto-text">山札から手札ゾーンへドラッグすると1枚ドロー。<br>山札からフィールドにドラッグすると<br>カードを出すことができます。</div>
+          <div class="howto-text">山札から手札ゾーンへドラッグすると1枚ドロー。山札からフィールドにドラッグするとカードを出すことができます。</div>
         </div>
       </div>
 
@@ -550,7 +553,7 @@
         <div class="howto-num">3</div>
         <div class="howto-body">
           <div class="howto-title">カードを動かす</div>
-          <div class="howto-text">手札のカードはドラッグでフィールドへ。<br>フィールドのカードは自由に動かせて、<br>タップすると回転・裏返し・山札へ戻すなどの<br>メニューが出ます。</div>
+          <div class="howto-text">手札のカードはドラッグでフィールドへ。フィールドのカードは自由に動かせて、タップすると回転・裏返し・山札へ戻すなどのメニューが出ます。</div>
         </div>
       </div>
 
@@ -558,7 +561,7 @@
         <div class="howto-num">4</div>
         <div class="howto-body">
           <div class="howto-title">山札のカード</div>
-          <div class="howto-text">山札をタップするとメニューが開き、<br>「山札を見る」で上から好きな枚数を確認できます。<br>見ているカードはドラッグすることで<br>手札やフィールドに移動できます。</div>
+          <div class="howto-text">山札をタップするとメニューが開き、「山札を見る」で上から好きな枚数を確認できます。見ているカードはドラッグすることで手札やフィールドに移動できます。</div>
         </div>
       </div>
 
@@ -566,7 +569,7 @@
         <div class="howto-num">5</div>
         <div class="howto-body">
           <div class="howto-title">まとめて選択</div>
-          <div class="howto-text">フィールドの空いている場所をなぞると範囲選択。<br>選んだカードはまとめて操作できます。</div>
+          <div class="howto-text">フィールドの空いている箇所をなぞり、範囲を選択。選んだカードはまとめて操作できます。</div>
         </div>
       </div>
 
@@ -590,7 +593,7 @@
       <div class="lib-grid" id="libGrid"></div>
 
       <div class="build-section-head" style="margin-top:18px;">
-        <span>追加デッキ</span>
+        <span>追加デッキ（任意）</span>
         <button class="mini-btn section-add-btn" id="btnAddExtra">＋ 画像を追加</button>
       </div>
       <div class="lib-grid" id="extraGrid"></div>
@@ -628,7 +631,7 @@
     <div class="settings-scroll">
       <div class="settings-section-title">ゲーム設定</div>
       <div class="setting-row">
-        <span>開始時に手札へドロー</span>
+        <span>開始時の手札枚数</span>
         <div class="num-ctrl">
           <button class="mini-btn" id="drawMinus">－</button>
           <b id="drawVal">0</b>
@@ -636,7 +639,7 @@
         </div>
       </div>
       <div class="setting-row">
-        <span>開始時の裏向きカード</span>
+        <span>開始時の裏向きカード枚数</span>
         <div class="num-ctrl">
           <button class="mini-btn" id="fdMinus">－</button>
           <b id="fdVal">0</b>
@@ -920,6 +923,38 @@
     document.body.appendChild(overlay);
   }
 
+  // 無制限プラン加入のポップアップ（タイトル・デッキ選択の両方から使う）
+  function showSubscribePopup(){
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = '広告が非表示となり、保存できるデッキの数が無制限になります。\n※試作品のため実際の課金は発生しません';
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const cancel = document.createElement('button');
+    cancel.className = 'confirm-cancel';
+    cancel.textContent = 'キャンセル';
+    cancel.onclick = ()=> overlay.remove();
+    const ok = document.createElement('button');
+    ok.className = 'confirm-ok';
+    ok.textContent = '¥300/月で加入';
+    ok.onclick = ()=>{
+      overlay.remove();
+      isSubscribed = true;
+      while(decks.length < MAX_DECK_SLOTS){
+        decks.push({id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]});
+      }
+      renderDeckSelect();
+    };
+    actions.appendChild(cancel); actions.appendChild(ok);
+    box.appendChild(p); box.appendChild(actions);
+    overlay.appendChild(box);
+    overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+
   function showConfirm(message, onYes){
     const overlay = document.createElement('div');
     overlay.className = 'confirm-overlay';
@@ -1080,8 +1115,9 @@
       list.appendChild(item);
     });
 
-    // 次の1枠だけロック表示（¥100で追加 or サブスク訴求）
-    if(!isSubscribed && decks.length >= deckSlotLimit() && deckSlotLimit() < MAX_DECK_SLOTS){
+    // 未加入の間は、枠の空きに関わらず常に購入メニューを表示する
+    if(!isSubscribed){
+      if(deckSlotLimit() < MAX_DECK_SLOTS){
       const lock = document.createElement('div');
       lock.className = 'deck-item deck-item-locked';
       const thumb = document.createElement('div');
@@ -1093,7 +1129,7 @@
       name.textContent = 'デッキ枠を追加';
       const desc = document.createElement('div');
       desc.className = 'deck-item-count';
-      desc.textContent = `¥100で保存枠を1つ追加（最大${MAX_DECK_SLOTS}個）`;
+      desc.textContent = '保存できるデッキの数が1つ増えます。（有効期限なし）';
       const actions = document.createElement('div');
       actions.className = 'deck-item-actions';
       const buyBtn = document.createElement('button');
@@ -1108,27 +1144,41 @@
           renderDeckSelect();
         });
       };
-      const subBtn = document.createElement('button');
-      subBtn.className = 'mini-btn deck-action-btn deck-buy-btn';
-      subBtn.textContent = 'サブスク(¥300)';
-      subBtn.onclick = ()=>{
-        showConfirm('月額¥300で広告削除＋\nデッキ枠が最大20個になります。\n加入しますか？\n※試作品のため実際の課金は発生しません', ()=>{
-          isSubscribed = true;
-          // 20枠すべてを空デッキで埋める
-          while(decks.length < MAX_DECK_SLOTS){
-            decks.push({id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]});
-          }
-          renderDeckSelect();
-        });
-      };
       actions.appendChild(buyBtn);
-      actions.appendChild(subBtn);
       info.appendChild(name);
       info.appendChild(desc);
       info.appendChild(actions);
       lock.appendChild(thumb);
       lock.appendChild(info);
       list.appendChild(lock);
+      }
+
+      // 無制限プランの枠（未加入なら常に表示）
+      const sub = document.createElement('div');
+      sub.className = 'deck-item deck-item-locked';
+      const subThumb = document.createElement('div');
+      subThumb.className = 'deck-item-thumb deck-lock-thumb';
+      const subInfo = document.createElement('div');
+      subInfo.className = 'deck-item-info';
+      const subName = document.createElement('div');
+      subName.className = 'deck-item-name';
+      subName.textContent = '無制限プランに加入';
+      const subDesc = document.createElement('div');
+      subDesc.className = 'deck-item-count';
+      subDesc.textContent = '広告が非表示となり、保存できるデッキの数が無制限になります。';
+      const subActions = document.createElement('div');
+      subActions.className = 'deck-item-actions';
+      const subBtn = document.createElement('button');
+      subBtn.className = 'mini-btn deck-action-btn deck-buy-btn';
+      subBtn.textContent = '¥300/月で加入';
+      subBtn.onclick = ()=> showSubscribePopup();
+      subActions.appendChild(subBtn);
+      subInfo.appendChild(subName);
+      subInfo.appendChild(subDesc);
+      subInfo.appendChild(subActions);
+      sub.appendChild(subThumb);
+      sub.appendChild(subInfo);
+      list.appendChild(sub);
     }
 
     // 枠の使用状況表示
@@ -1141,6 +1191,7 @@
   $('btnGoDeckSelect').onclick = ()=> goToScreen('deckselect');
   $('btnDeckSelectBack').onclick = ()=> goToScreen('title');
   $('btnGoHowto').onclick = ()=> goToScreen('howto');
+  $('btnUnlimited').onclick = ()=> showSubscribePopup();
 
   // ===== お問い合わせ =====
   const CONTACT_FORM_URL = 'https://forms.gle/4UyRdSkAcFxwfjDn8';
@@ -1177,7 +1228,7 @@
       if(deckSlotLimit() >= MAX_DECK_SLOTS){
         showAlert('既に最大まで拡張済みです');
       } else {
-        showAlert('デッキ保存枠がいっぱいです。\n枠を追加（¥100）するか、サブスク（¥300）で\n最大20個まで保存できます。');
+        showAlert('デッキ保存枠がいっぱいです。\n枠を追加（¥100）するか無制限プラン（¥300/月）に加入することで最大20個まで保存することができます。');
       }
       return;
     }
@@ -1227,7 +1278,7 @@
   function renderBuild(){
     scheduleSave();
     grid_render($('libGrid'), library, 'まだカードが登録されていません。<br>「＋ 画像を追加」からカード画像を選んでください。<br>同じカードを複数枚使いたい場合は、登録後に「＋」で複製できます。');
-    grid_render($('extraGrid'), extraLibrary, '追加デッキは任意です。<br>登録したカードは、<br>開始時にフィールド上部に置かれます。');
+    grid_render($('extraGrid'), extraLibrary, '登録したカードは、<br>開始時にフィールド上部に置かれます。');
     const total = library.reduce((s,l)=>s+l.count,0);
     const extraTotal = extraLibrary.reduce((s,l)=>s+l.count,0);
     $('libTotal').textContent = total;
