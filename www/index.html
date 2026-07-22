@@ -1474,6 +1474,8 @@
 
   // ================= PLAY SCREEN =================
   function startNewSessionFromLibrary(){
+    cleanupGhosts();            // 取り残された点線・残像を掃除
+    multiSel.clear();
     cards = {}; deckOrder = []; handOrder = []; selectedId = null;
     library.forEach(item=>{
       for(let i=0;i<item.count;i++){
@@ -1657,21 +1659,27 @@
   // ---- rubber-band multi select on empty field ----
   let cancelRubberBand = ()=>{};
   (function setupRubberBand(){
-    let sx, sy, rectEl = null, active = false;
+    let sx, sy, rectEl = null, activePointer = null;
     cancelRubberBand = ()=>{
-      active = false;
-      if(rectEl){ rectEl.remove(); rectEl = null; }
+      activePointer = null;
+      rectEl = null;
+      // 取り残された矩形も含めて全て除去する
+      field.querySelectorAll('.select-rect').forEach(n=> n.remove());
     };
     field.addEventListener('pointerdown', (e)=>{
       // カードの上はカード側でstopPropagationされるので、ここに来るのは空白のみ
-      active = true;
+      // 2本目以降の指は無視する（多点タッチで矩形が取り残されるのを防ぐ）
+      if(activePointer !== null) return;
+      // 過去の操作で万一取り残された矩形があればここで掃除する
+      field.querySelectorAll('.select-rect').forEach(n=> n.remove());
+      activePointer = e.pointerId;
       field.setPointerCapture(e.pointerId);
       const fr = field.getBoundingClientRect();
       sx = e.clientX - fr.left; sy = e.clientY - fr.top;
       rectEl = null;
     });
     field.addEventListener('pointermove', (e)=>{
-      if(!active) return;
+      if(e.pointerId !== activePointer) return;
       const fr = field.getBoundingClientRect();
       const cx = e.clientX - fr.left, cy = e.clientY - fr.top;
       if(!rectEl && (Math.abs(cx-sx)>6 || Math.abs(cy-sy)>6)){
@@ -1688,8 +1696,8 @@
       }
     });
     field.addEventListener('pointerup', (e)=>{
-      if(!active) return;
-      active = false;
+      if(e.pointerId !== activePointer) return;
+      activePointer = null;
       const fr = field.getBoundingClientRect();
       if(rectEl){
         const cx = e.clientX - fr.left, cy = e.clientY - fr.top;
@@ -1711,8 +1719,10 @@
         if(multiSel.size>0){ multiSel.clear(); renderPlay(); }
       }
     });
-    field.addEventListener('pointercancel', cancelRubberBand);
-    field.addEventListener('lostpointercapture', cancelRubberBand);
+    // 操作中の指のイベントの時だけキャンセル処理を行う（無視した2本目の指で誤発動しないように）
+    const rubberCancelIfActive = (e)=>{ if(e.pointerId === activePointer) cancelRubberBand(); };
+    field.addEventListener('pointercancel', rubberCancelIfActive);
+    field.addEventListener('lostpointercapture', rubberCancelIfActive);
   })();
 
   function moveToHandSilent(id){
