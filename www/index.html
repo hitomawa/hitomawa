@@ -882,7 +882,7 @@
   const PRODUCT_DECKSLOT = 'com.hitomawa.app.deckslot';
   const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-4388184272207134/4998981706';
   const ADMOB_TEST_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/4411468910'; // Google公式のテスト用ID
-  const USE_TEST_ADS = true;             // TestFlight中はテスト広告。App Store審査に出す前にfalseにする
+  const USE_TEST_ADS = false;            // 本番広告（審査提出用）。開発中の動作確認時はtrueに戻す
   const AD_EVERY_N_ACTIONS = 3;          // 対象操作（デッキ開始・やり直す）3回に1回
   const AD_MIN_INTERVAL_MS = 5*60*1000;  // かつ前回の広告表示から5分以上あける
   const NativePlugins = (isNativeApp && window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : null;
