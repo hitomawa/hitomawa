@@ -893,6 +893,12 @@
     }
   }
 
+  // タイトル画面の「無制限プランに加入」ボタンは加入中だけ隠す（解約で再表示）
+  function updateUnlimitedBtn(){
+    const b = $('btnUnlimited');
+    if(b) b.style.display = isSubscribed ? 'none' : '';
+  }
+
   // RevenueCatの顧客情報をアプリの状態に反映する
   function applyCustomerInfo(ci){
     if(!ci) return;
@@ -905,6 +911,7 @@
     if(changed){
       if(isSubscribed) fillDecksToMax();
       scheduleSave();
+      updateUnlimitedBtn();
       if(currentScreen === 'deckselect') renderDeckSelect();
     }
   }
@@ -1110,6 +1117,7 @@
         isSubscribed = true;
         fillDecksToMax();
         scheduleSave();
+        updateUnlimitedBtn();
         renderDeckSelect();
         showAlert('無制限プランに加入しました。\nご利用ありがとうございます！');
       });
@@ -2725,6 +2733,7 @@
     persistReady = true;
     applyDeckColor();
     updateGameSettingsUI();
+    updateUnlimitedBtn();
     goToScreen('title');
     // 課金・広告の初期化（アプリ版のみ動作。保存データ読み込み後に行い、ストア情報で上書き反映する）
     initStore().then(()=> initAds());
