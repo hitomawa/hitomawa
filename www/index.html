@@ -331,6 +331,8 @@
     box-shadow:var(--shadow-float);
   }
   .confirm-box p{font-size:12px; line-height:1.8; color:var(--ink); margin:0 0 16px; font-weight:600; white-space:pre-line;}
+  .sub-legal{font-size:10px; color:var(--muted); line-height:1.7; margin:-6px 0 14px;}
+  .sub-legal a{color:var(--muted); text-decoration:underline;}
   .howto-text, .lib-empty, .deck-list-empty, .empty-hint{text-wrap:pretty;}
   .confirm-actions{display:flex; gap:8px; justify-content:center;}
   .confirm-actions button{
@@ -1102,6 +1104,27 @@
     box.className = 'confirm-box';
     const p = document.createElement('p');
     p.textContent = '広告が非表示となり、保存できるデッキの数が最大（20個）まで拡張されます。';
+    // サブスクの必須表記（自動更新の説明と規約リンク）
+    const legal = document.createElement('div');
+    legal.className = 'sub-legal';
+    const legalNote = document.createElement('div');
+    legalNote.textContent = '月額300円で自動更新されます。解約はiOSの設定からいつでも行えます。';
+    const legalLinks = document.createElement('div');
+    const termsLink = document.createElement('a');
+    termsLink.textContent = '利用規約';
+    termsLink.href = '#';
+    termsLink.onclick = (e)=>{ e.preventDefault(); window.open('https://hitomawa.github.io/hitomawa/terms.html', '_blank'); };
+    const sep = document.createElement('span');
+    sep.textContent = '　|　';
+    const privacyLink = document.createElement('a');
+    privacyLink.textContent = 'プライバシーポリシー';
+    privacyLink.href = '#';
+    privacyLink.onclick = (e)=>{ e.preventDefault(); window.open('https://hitomawa.github.io/hitomawa/privacy.html', '_blank'); };
+    legalLinks.appendChild(termsLink);
+    legalLinks.appendChild(sep);
+    legalLinks.appendChild(privacyLink);
+    legal.appendChild(legalNote);
+    legal.appendChild(legalLinks);
     const actions = document.createElement('div');
     actions.className = 'confirm-actions';
     const cancel = document.createElement('button');
@@ -1123,7 +1146,7 @@
       });
     };
     actions.appendChild(cancel); actions.appendChild(ok);
-    box.appendChild(p); box.appendChild(actions);
+    box.appendChild(p); box.appendChild(legal); box.appendChild(actions);
     overlay.appendChild(box);
     overlay.onclick = (e)=>{ if(e.target===overlay) overlay.remove(); };
     document.body.appendChild(overlay);
