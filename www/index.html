@@ -498,6 +498,10 @@
     text-align:center; font-size:10px; color:var(--muted); font-weight:700;
     letter-spacing:.06em; padding:10px 0 2px;
   }
+  .restore-link{
+    display:block; margin:2px auto 6px; background:none; border:none; cursor:pointer;
+    font-size:10px; color:var(--muted); font-weight:600; text-decoration:underline; padding:6px 10px;
+  }
   .deck-list-empty{
     padding:36px 12px; text-align:center; font-size:11px; color:var(--ink-soft); line-height:1.9;
   }
@@ -861,13 +865,150 @@
         buildBtns = $('buildBtns'), playBtns = $('playBtns'), deckSelectBtns = $('deckSelectBtns'),
         screenTitle = $('screenTitle'), screenSubtitle = $('screenSubtitle');
 
-  // ===== 収益構造モック（本実装ではストア課金と連携する） =====
+  // ===== 収益構造 =====
   const FREE_DECK_SLOTS = 1;      // 無料枠
   const MAX_DECK_SLOTS = 20;      // 最大枠
-  let purchasedSlots = 0;         // 買い切りで追加した枠数（モック）
-  let isSubscribed = false;       // サブスク加入状態（モック）
+  let purchasedSlots = 0;         // 買い切りで追加した枠数
+  let isSubscribed = false;       // サブスク加入状態
   function deckSlotLimit(){
     return isSubscribed ? MAX_DECK_SLOTS : Math.min(FREE_DECK_SLOTS + purchasedSlots, MAX_DECK_SLOTS);
+  }
+
+  // ===== 課金・広告（アプリ版はRevenueCat/AdMobと連携。ブラウザは開発用の疑似動作） =====
+  const RC_API_KEY = 'appl_gmFWAPvayFUcEITuGzdzWHpCXzK';
+  const PRODUCT_UNLIMITED = 'com.hitomawa.app.unlimited.monthly';
+  const PRODUCT_DECKSLOT = 'com.hitomawa.app.deckslot';
+  const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-4388184272207134/4998981706';
+  const ADMOB_TEST_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/4411468910'; // Google公式のテスト用ID
+  const USE_TEST_ADS = true;             // TestFlight中はテスト広告。App Store審査に出す前にfalseにする
+  const AD_EVERY_N_ACTIONS = 3;          // 対象操作（デッキ開始・やり直す）3回に1回
+  const AD_MIN_INTERVAL_MS = 5*60*1000;  // かつ前回の広告表示から5分以上あける
+  const NativePlugins = (isNativeApp && window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : null;
+
+  let storeProducts = {};   // productId -> ストア商品情報
+
+  function fillDecksToMax(){
+    while(decks.length < MAX_DECK_SLOTS){
+      decks.push({id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]});
+    }
+  }
+
+  // RevenueCatの顧客情報をアプリの状態に反映する
+  function applyCustomerInfo(ci){
+    if(!ci) return;
+    const nowSub = !!(ci.entitlements && ci.entitlements.active && ci.entitlements.active['unlimited']);
+    // デッキ枠（¥100）はストアに記録された購入回数とローカル記録の大きい方を採用（機種変更時の救済）
+    const slotTx = (ci.nonSubscriptionTransactions || []).filter(t=> t.productIdentifier === PRODUCT_DECKSLOT).length;
+    let changed = false;
+    if(nowSub !== isSubscribed){ isSubscribed = nowSub; changed = true; }
+    if(slotTx > purchasedSlots){ purchasedSlots = slotTx; changed = true; }
+    if(changed){
+      if(isSubscribed) fillDecksToMax();
+      scheduleSave();
+      if(currentScreen === 'deckselect') renderDeckSelect();
+    }
+  }
+
+  async function refreshStoreProducts(){
+    if(!NativePlugins || !NativePlugins.Purchases) return;
+    try{
+      const res = await NativePlugins.Purchases.getProducts({ productIdentifiers: [PRODUCT_UNLIMITED, PRODUCT_DECKSLOT] });
+      (res.products || []).forEach(p=>{ storeProducts[p.identifier] = p; });
+    }catch(e){ /* オフライン等：購入時に再取得する */ }
+  }
+
+  async function initStore(){
+    if(!NativePlugins || !NativePlugins.Purchases) return;
+    try{
+      await NativePlugins.Purchases.configure({ apiKey: RC_API_KEY });
+      NativePlugins.Purchases.addCustomerInfoUpdateListener((info)=> applyCustomerInfo(info));
+      const res = await NativePlugins.Purchases.getCustomerInfo();
+      applyCustomerInfo(res.customerInfo);
+      await refreshStoreProducts();
+    }catch(e){ /* オフライン等。ローカル保存の状態のまま継続する */ }
+  }
+
+  // 購入処理。成功時に onSuccess(購入前の枠数) を呼ぶ
+  function purchaseFromStore(productId, onSuccess){
+    const prevSlots = purchasedSlots;
+    if(!NativePlugins || !NativePlugins.Purchases){
+      onSuccess(prevSlots);   // ブラウザ（開発用）：即時成功の疑似動作
+      return;
+    }
+    const product = storeProducts[productId];
+    if(!product){
+      refreshStoreProducts();
+      showAlert('ストアに接続できませんでした。\n通信環境をご確認のうえ、しばらくしてからもう一度お試しください。');
+      return;
+    }
+    NativePlugins.Purchases.purchaseStoreProduct({ product }).then((res)=>{
+      applyCustomerInfo(res.customerInfo);
+      onSuccess(prevSlots);
+    }).catch((e)=>{
+      if(e && String(e.code) === '1') return;   // ユーザーが購入をキャンセルした
+      showAlert('購入処理を完了できませんでした。\n時間をおいてもう一度お試しください。');
+    });
+  }
+
+  // 機種変更・再インストール時の「購入を復元」
+  function restorePurchasesFlow(){
+    if(!NativePlugins || !NativePlugins.Purchases){
+      showAlert('購入の復元はアプリ版でのみ利用できます。');
+      return;
+    }
+    NativePlugins.Purchases.restorePurchases().then((res)=>{
+      applyCustomerInfo(res.customerInfo);
+      if(isSubscribed){
+        showAlert('購入情報を復元しました。\n無制限プランが有効になっています。');
+      } else if(purchasedSlots > 0){
+        showAlert('購入情報を復元しました。');
+      } else {
+        showAlert('復元できる購入が見つかりませんでした。');
+      }
+      renderDeckSelect();
+    }).catch((e)=>{
+      showAlert('復元に失敗しました。\n通信環境をご確認のうえ、もう一度お試しください。');
+    });
+  }
+
+  // ===== インタースティシャル広告 =====
+  let adActionCount = 0;
+  let lastAdShownAt = 0;
+  let interstitialReady = false;
+  let adsInitialized = false;
+
+  async function prepareInterstitial(){
+    if(!NativePlugins || !NativePlugins.AdMob || isSubscribed) return;
+    try{
+      await NativePlugins.AdMob.prepareInterstitial({ adId: USE_TEST_ADS ? ADMOB_TEST_INTERSTITIAL_ID : ADMOB_INTERSTITIAL_ID });
+      interstitialReady = true;
+    }catch(e){ interstitialReady = false; }
+  }
+
+  async function initAds(){
+    if(!NativePlugins || !NativePlugins.AdMob || isSubscribed || adsInitialized) return;
+    adsInitialized = true;
+    try{
+      try{ await NativePlugins.AdMob.requestTrackingAuthorization(); }catch(e){}
+      await NativePlugins.AdMob.initialize({});
+      NativePlugins.AdMob.addListener('interstitialAdDismissed', ()=>{ prepareInterstitial(); });
+      NativePlugins.AdMob.addListener('interstitialAdFailedToShow', ()=>{ prepareInterstitial(); });
+      await prepareInterstitial();
+    }catch(e){ adsInitialized = false; }
+  }
+
+  // 「このデッキで始める」「やり直す」の押下時に呼ぶ。
+  // 3回に1回、かつ前回の広告から5分以上あいている時だけ全画面広告を表示する。
+  function maybeShowInterstitial(){
+    if(!NativePlugins || !NativePlugins.AdMob || isSubscribed) return;
+    adActionCount++;
+    if(adActionCount < AD_EVERY_N_ACTIONS) return;
+    if(Date.now() - lastAdShownAt < AD_MIN_INTERVAL_MS) return;
+    if(!interstitialReady){ prepareInterstitial(); return; }
+    adActionCount = 0;
+    lastAdShownAt = Date.now();
+    interstitialReady = false;
+    NativePlugins.AdMob.showInterstitial().catch(()=> prepareInterstitial());
   }
 
   let decks = [];            // {id, name, library:[{id,img,count}]}
@@ -953,7 +1094,7 @@
     const box = document.createElement('div');
     box.className = 'confirm-box';
     const p = document.createElement('p');
-    p.textContent = '広告が非表示となり、保存できるデッキの数が最大（20個）まで拡張されます。\n※試作品のため実際の課金は発生しません';
+    p.textContent = '広告が非表示となり、保存できるデッキの数が最大（20個）まで拡張されます。';
     const actions = document.createElement('div');
     actions.className = 'confirm-actions';
     const cancel = document.createElement('button');
@@ -965,11 +1106,13 @@
     ok.textContent = '¥300/月で加入';
     ok.onclick = ()=>{
       overlay.remove();
-      isSubscribed = true;
-      while(decks.length < MAX_DECK_SLOTS){
-        decks.push({id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]});
-      }
-      renderDeckSelect();
+      purchaseFromStore(PRODUCT_UNLIMITED, ()=>{
+        isSubscribed = true;
+        fillDecksToMax();
+        scheduleSave();
+        renderDeckSelect();
+        showAlert('無制限プランに加入しました。\nご利用ありがとうございます！');
+      });
     };
     actions.appendChild(cancel); actions.appendChild(ok);
     box.appendChild(p); box.appendChild(actions);
@@ -1072,6 +1215,12 @@
     list.innerHTML = '';
     if(decks.length===0){
       list.innerHTML = '<div class="deck-list-empty">まだデッキがありません。<br>「新規作成」からデッキを作りましょう。</div>';
+      // 再インストール直後でも購入を復元できるようにする（Appleの必須要件）
+      const emptyRestore = document.createElement('button');
+      emptyRestore.className = 'restore-link';
+      emptyRestore.textContent = '購入を復元する';
+      emptyRestore.onclick = ()=> restorePurchasesFlow();
+      list.appendChild(emptyRestore);
       return;
     }
     decks.forEach(deck=>{
@@ -1159,12 +1308,16 @@
       buyBtn.className = 'mini-btn deck-action-btn deck-buy-btn';
       buyBtn.textContent = '¥100で追加';
       buyBtn.onclick = ()=>{
-        showConfirm('デッキ保存枠を1つ追加しますか？（¥100）\n※試作品のため実際の課金は発生しません', ()=>{
-          purchasedSlots++;
-          // 購入した枠に空のデッキをそのまま登録する
-          const deck = {id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]};
-          decks.push(deck);
-          renderDeckSelect();
+        showConfirm('デッキ保存枠を1つ追加しますか？（¥100）', ()=>{
+          purchaseFromStore(PRODUCT_DECKSLOT, (prevSlots)=>{
+            // ストア情報の反映で既に加算済みならそのまま、未反映ならここで1つ加算する
+            if(purchasedSlots <= prevSlots) purchasedSlots = prevSlots + 1;
+            // 購入した枠に空のデッキをそのまま登録する
+            const deck = {id:newDeckId(), name:`デッキ${decks.length+1}`, library:[], extra:[]};
+            decks.push(deck);
+            scheduleSave();
+            renderDeckSelect();
+          });
         });
       };
       actions.appendChild(buyBtn);
@@ -1209,6 +1362,13 @@
     status.className = 'slot-status';
     status.textContent = `デッキ保存枠：${decks.length} / ${deckSlotLimit()}`;
     list.appendChild(status);
+
+    // 購入の復元（機種変更・再インストール時用。Appleの必須要件）
+    const restoreBtn = document.createElement('button');
+    restoreBtn.className = 'restore-link';
+    restoreBtn.textContent = '購入を復元する';
+    restoreBtn.onclick = ()=> restorePurchasesFlow();
+    list.appendChild(restoreBtn);
   }
 
   $('btnGoDeckSelect').onclick = ()=> goToScreen('deckselect');
@@ -1470,6 +1630,7 @@
     history = [];
     goToScreen('play');           // 先に画面を切り替えてフィールドの実寸を確定させる
     startNewSessionFromLibrary(); // その後に配置を計算する
+    maybeShowInterstitial();      // 広告判定（3回に1回・5分間隔、加入者は非表示）
   };
 
   // ================= PLAY SCREEN =================
@@ -2494,11 +2655,13 @@
     if(skipRestartConfirm){
       pushHistory();
       startNewSessionFromLibrary();
+      maybeShowInterstitial();    // 広告判定（3回に1回・5分間隔、加入者は非表示）
       return;
     }
     showConfirm('現在の手札・場をリセットして、\n同じ構成の山札で最初からやり直しますか？', ()=>{
       pushHistory();
       startNewSessionFromLibrary();
+      maybeShowInterstitial();
     });
   };
   $('btnEditDeck').onclick = ()=>{ buildReturnTo = 'play'; goToScreen('build'); };
@@ -2563,6 +2726,8 @@
     applyDeckColor();
     updateGameSettingsUI();
     goToScreen('title');
+    // 課金・広告の初期化（アプリ版のみ動作。保存データ読み込み後に行い、ストア情報で上書き反映する）
+    initStore().then(()=> initAds());
   });
 })();
 </script>
