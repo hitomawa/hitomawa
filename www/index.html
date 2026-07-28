@@ -688,6 +688,13 @@
         <button class="mini-btn" id="btnNavTitle">タイトル</button>
         <button class="mini-btn" id="btnNavDeckSelect">デッキ選択</button>
       </div>
+
+      <!-- ▼▼▼ テスト用（審査に出す前に必ず削除する）▼▼▼ -->
+      <div class="settings-section-title" style="margin-top:22px;">動作確認用（テスト）</div>
+      <div class="settings-nav">
+        <button class="mini-btn" id="btnTestExpire">期限切れを試す</button>
+      </div>
+      <!-- ▲▲▲ テスト用ここまで ▲▲▲ -->
     </div>
     <button class="mini-btn settings-back" id="btnSettingsBack">戻る</button>
   </div>
@@ -1544,6 +1551,21 @@
 
   $('btnNavTitle').onclick = ()=> goToScreen('title');
   $('btnNavDeckSelect').onclick = ()=> goToScreen('deckselect');
+
+  // ▼▼▼ テスト用（審査に出す前に必ず削除する）▼▼▼
+  // 実際の解約はできないため、アプリ内で「加入していない状態」を作って期限切れの案内を確認する
+  $('btnTestExpire').onclick = ()=>{
+    isSubscribed = false;
+    updateUnlimitedBtn();
+    scheduleSave();
+    goToScreen('deckselect');
+    if(decks.length > deckSlotLimit()){
+      showResubscribePrompt();
+    } else {
+      showAlert(`未加入の状態にしました。\n保存枠（${deckSlotLimit()}個）を超えていないため削除の確認は出ません。`);
+    }
+  };
+  // ▲▲▲ テスト用ここまで ▲▲▲
 
   // ================= BUILD SCREEN =================
   let addTarget = 'main'; // 画像追加先：'main' | 'extra'
