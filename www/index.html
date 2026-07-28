@@ -895,6 +895,20 @@
     }
   }
 
+  // 解約などで枠が減った時、上限を超えた分のデッキを後から作った順に削除する
+  function trimDecksToLimit(){
+    const limit = deckSlotLimit();
+    if(decks.length <= limit) return 0;
+    const removed = decks.length - limit;
+    const dropped = decks.splice(limit);           // 上限より後ろ（後から作った分）を削除
+    // 削除したデッキを開いていた場合は選択状態を解除する
+    if(dropped.some(d=> d.id === currentDeckId)){
+      currentDeckId = null; library = []; extraLibrary = [];
+      if(currentScreen === 'play' || currentScreen === 'build') goToScreen('deckselect');
+    }
+    return removed;
+  }
+
   // タイトル画面の「無制限プランに加入」ボタンは加入中だけ隠す（解約で再表示）
   function updateUnlimitedBtn(){
     const b = $('btnUnlimited');
@@ -912,9 +926,17 @@
     if(slotTx > purchasedSlots){ purchasedSlots = slotTx; changed = true; }
     if(changed){
       if(isSubscribed) fillDecksToMax();
-      scheduleSave();
       updateUnlimitedBtn();
+    }
+    // 未加入の間は保存枠を超えたデッキを整理する
+    // （解約した瞬間だけでなく、過去に解約済みのまま残っている場合もここで揃える）
+    const removed = isSubscribed ? 0 : trimDecksToLimit();
+    if(changed || removed > 0){
+      scheduleSave();
       if(currentScreen === 'deckselect') renderDeckSelect();
+    }
+    if(removed > 0){
+      showAlert(`無制限プランが終了したため、保存できる枠（${deckSlotLimit()}個）を超えたデッキ${removed}個を削除しました。`);
     }
   }
 
