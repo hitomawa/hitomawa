@@ -927,17 +927,63 @@
     if(changed){
       if(isSubscribed) fillDecksToMax();
       updateUnlimitedBtn();
-    }
-    // 未加入の間は保存枠を超えたデッキを整理する
-    // （解約した瞬間だけでなく、過去に解約済みのまま残っている場合もここで揃える）
-    const removed = isSubscribed ? 0 : trimDecksToLimit();
-    if(changed || removed > 0){
       scheduleSave();
       if(currentScreen === 'deckselect') renderDeckSelect();
     }
-    if(removed > 0){
-      showAlert(`無制限プランが終了したため、保存できる枠（${deckSlotLimit()}個）を超えたデッキ${removed}個を削除しました。`);
-    }
+    // 未加入で保存枠を超えている場合は、すぐに削除せず再加入を促す
+    // （解約した瞬間だけでなく、過去に解約済みのまま残っている場合もここで確認する）
+    if(!isSubscribed && decks.length > deckSlotLimit()) showResubscribePrompt();
+  }
+
+  // 期限切れの案内。「加入する」なら再加入してデッキを残し、「加入しない」なら枠を超えた分を削除する
+  let resubscribePromptOpen = false;
+  function showResubscribePrompt(){
+    if(resubscribePromptOpen) return;   // 二重表示を防ぐ
+    resubscribePromptOpen = true;
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const p = document.createElement('p');
+    p.textContent = '無制限プランの期限が切れました。再加入しますか？\n再加入されない場合、上限数を超えるデッキは削除されます。';
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const no = document.createElement('button');
+    no.className = 'confirm-cancel';
+    no.textContent = '加入しない';
+    no.onclick = ()=>{
+      overlay.remove();
+      resubscribePromptOpen = false;
+      if(trimDecksToLimit() > 0){
+        scheduleSave();
+        if(currentScreen === 'deckselect') renderDeckSelect();
+      }
+    };
+    const yes = document.createElement('button');
+    yes.className = 'confirm-ok';
+    yes.textContent = '加入する';
+    yes.onclick = ()=>{
+      overlay.remove();
+      purchaseFromStore(PRODUCT_UNLIMITED, ()=>{
+        // 再加入できたのでデッキは削除せずそのまま残す
+        resubscribePromptOpen = false;
+        isSubscribed = true;
+        fillDecksToMax();
+        scheduleSave();
+        updateUnlimitedBtn();
+        renderDeckSelect();
+        showAlert('無制限プランに加入しました。\nご利用ありがとうございます！');
+      }, ()=>{
+        // 購入をやめた・失敗した場合は、削除せずもう一度選んでもらう
+        resubscribePromptOpen = false;
+        showResubscribePrompt();
+      });
+    };
+    actions.appendChild(no); actions.appendChild(yes);
+    box.appendChild(p); box.appendChild(actions);
+    overlay.appendChild(box);
+    // どちらかを選ぶまで閉じられないよう、背景タップでは閉じない
+    document.body.appendChild(overlay);
   }
 
   async function refreshStoreProducts(){
@@ -959,8 +1005,8 @@
     }catch(e){ /* オフライン等。ローカル保存の状態のまま継続する */ }
   }
 
-  // 購入処理。成功時に onSuccess(購入前の枠数) を呼ぶ
-  function purchaseFromStore(productId, onSuccess){
+  // 購入処理。成功時に onSuccess(購入前の枠数)、中断・失敗時に onFail() を呼ぶ
+  function purchaseFromStore(productId, onSuccess, onFail){
     const prevSlots = purchasedSlots;
     if(!NativePlugins || !NativePlugins.Purchases){
       onSuccess(prevSlots);   // ブラウザ（開発用）：即時成功の疑似動作
@@ -970,14 +1016,17 @@
     if(!product){
       refreshStoreProducts();
       showAlert('ストアに接続できませんでした。\n通信環境をご確認のうえ、しばらくしてからもう一度お試しください。');
+      if(onFail) onFail();
       return;
     }
     NativePlugins.Purchases.purchaseStoreProduct({ product }).then((res)=>{
       applyCustomerInfo(res.customerInfo);
       onSuccess(prevSlots);
     }).catch((e)=>{
-      if(e && String(e.code) === '1') return;   // ユーザーが購入をキャンセルした
-      showAlert('購入処理を完了できませんでした。\n時間をおいてもう一度お試しください。');
+      if(!(e && String(e.code) === '1')){        // コード1はユーザーによる購入キャンセル
+        showAlert('購入処理を完了できませんでした。\n時間をおいてもう一度お試しください。');
+      }
+      if(onFail) onFail();
     });
   }
 
