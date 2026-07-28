@@ -933,6 +933,8 @@
     if(slotTx > purchasedSlots){ purchasedSlots = slotTx; changed = true; }
     if(changed){
       if(isSubscribed) fillDecksToMax();
+      // 加入が切れた場合は、この時点から広告を出せるようにする（起動時に未初期化のままだと出ない）
+      else initAds();
       updateUnlimitedBtn();
       scheduleSave();
       if(currentScreen === 'deckselect') renderDeckSelect();
@@ -1556,6 +1558,7 @@
   // 実際の解約はできないため、アプリ内で「加入していない状態」を作って期限切れの案内を確認する
   $('btnTestExpire').onclick = ()=>{
     isSubscribed = false;
+    initAds();                 // 未加入になったので広告を使えるようにする
     updateUnlimitedBtn();
     scheduleSave();
     goToScreen('deckselect');
