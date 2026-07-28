@@ -884,7 +884,7 @@
   const ADMOB_TEST_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/4411468910'; // Google公式のテスト用ID
   const USE_TEST_ADS = false;            // 本番広告（審査提出用）。開発中の動作確認時はtrueに戻す
   const AD_EVERY_N_ACTIONS = 3;          // 対象操作（デッキ開始・やり直す）3回に1回
-  const AD_MIN_INTERVAL_MS = 5*60*1000;  // かつ前回の広告表示から5分以上あける
+  const AD_MIN_INTERVAL_MS = 3*60*1000;  // かつ前回の広告表示から3分以上あける
   const NativePlugins = (isNativeApp && window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : null;
 
   let storeProducts = {};   // productId -> ストア商品情報
@@ -1007,7 +1007,7 @@
   }
 
   // 「このデッキで始める」「やり直す」の押下時に呼ぶ。
-  // 3回に1回、かつ前回の広告から5分以上あいている時だけ全画面広告を表示する。
+  // 3回に1回、かつ前回の広告から3分以上あいている時だけ全画面広告を表示する。
   function maybeShowInterstitial(){
     if(!NativePlugins || !NativePlugins.AdMob || isSubscribed) return;
     adActionCount++;
@@ -1661,7 +1661,7 @@
     history = [];
     goToScreen('play');           // 先に画面を切り替えてフィールドの実寸を確定させる
     startNewSessionFromLibrary(); // その後に配置を計算する
-    maybeShowInterstitial();      // 広告判定（3回に1回・5分間隔、加入者は非表示）
+    maybeShowInterstitial();      // 広告判定（3回に1回・3分間隔、加入者は非表示）
   };
 
   // ================= PLAY SCREEN =================
@@ -2686,7 +2686,7 @@
     if(skipRestartConfirm){
       pushHistory();
       startNewSessionFromLibrary();
-      maybeShowInterstitial();    // 広告判定（3回に1回・5分間隔、加入者は非表示）
+      maybeShowInterstitial();    // 広告判定（3回に1回・3分間隔、加入者は非表示）
       return;
     }
     showConfirm('現在の手札・場をリセットして、\n同じ構成の山札で最初からやり直しますか？', ()=>{
