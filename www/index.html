@@ -757,6 +757,7 @@
       decks,
       purchasedSlots,
       isSubscribed,
+      adActionTotal,
       settings: { deckColor, autoDrawCount, autoFaceDownCount, skipRestartConfirm },
       review: { sessions: reviewSessions, done: reviewDone }
     };
@@ -778,6 +779,7 @@
         }
         purchasedSlots = st.purchasedSlots || 0;
         isSubscribed = !!st.isSubscribed;
+        adActionTotal = st.adActionTotal || 0;
         if(st.settings){
           deckColor = st.settings.deckColor || deckColor;
           autoDrawCount = st.settings.autoDrawCount || 0;
@@ -886,6 +888,7 @@
   const USE_TEST_ADS = false;            // 本番広告（審査提出用）。開発中の動作確認時はtrueに戻す
   const AD_EVERY_N_ACTIONS = 3;          // 対象操作（デッキ開始・やり直す）3回に1回
   const AD_MIN_INTERVAL_MS = 3*60*1000;  // かつ前回の広告表示から3分以上あける
+  const AD_FREE_ACTIONS = 15;            // 最初の15回ぶんの操作は広告を出さない（端末ごとに通算）
   const NativePlugins = (isNativeApp && window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : null;
 
   let storeProducts = {};   // productId -> ストア商品情報
@@ -1056,6 +1059,7 @@
 
   // ===== インタースティシャル広告 =====
   let adActionCount = 0;
+  let adActionTotal = 0;        // 対象操作の通算回数（最初の無広告ぶんを数えるため保存する）
   let lastAdShownAt = 0;
   let interstitialReady = false;
   let adsInitialized = false;
@@ -1084,6 +1088,12 @@
   // 3回に1回、かつ前回の広告から3分以上あいている時だけ全画面広告を表示する。
   function maybeShowInterstitial(){
     if(!NativePlugins || !NativePlugins.AdMob || isSubscribed) return;
+    // 使い始めの15回ぶんは広告を出さない（この間は3回に1回の判定にも数えない）
+    if(adActionTotal < AD_FREE_ACTIONS){
+      adActionTotal++;
+      scheduleSave();
+      return;
+    }
     adActionCount++;
     if(adActionCount < AD_EVERY_N_ACTIONS) return;
     if(Date.now() - lastAdShownAt < AD_MIN_INTERVAL_MS) return;
