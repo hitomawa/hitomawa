@@ -888,7 +888,8 @@
   const USE_TEST_ADS = false;            // 本番広告（審査提出用）。開発中の動作確認時はtrueに戻す
   const AD_EVERY_N_ACTIONS = 3;          // 対象操作（デッキ開始・やり直す）3回に1回
   const AD_MIN_INTERVAL_MS = 3*60*1000;  // かつ前回の広告表示から3分以上あける
-  const AD_FREE_ACTIONS = 15;            // 最初の15回ぶんの操作は広告を出さない（端末ごとに通算）
+  const AD_FIRST_AT_ACTION = 12;         // 最初の広告は通算12回目の操作で出す（端末ごとに通算）
+  const AD_FREE_ACTIONS = AD_FIRST_AT_ACTION - AD_EVERY_N_ACTIONS;  // それまでは広告を出さない
   const NativePlugins = (isNativeApp && window.Capacitor && window.Capacitor.Plugins) ? window.Capacitor.Plugins : null;
 
   let storeProducts = {};   // productId -> ストア商品情報
@@ -1088,7 +1089,7 @@
   // 3回に1回、かつ前回の広告から3分以上あいている時だけ全画面広告を表示する。
   function maybeShowInterstitial(){
     if(!NativePlugins || !NativePlugins.AdMob || isSubscribed) return;
-    // 使い始めの15回ぶんは広告を出さない（この間は3回に1回の判定にも数えない）
+    // 使い始めのぶんは広告を出さない（この間は3回に1回の判定にも数えない）
     if(adActionTotal < AD_FREE_ACTIONS){
       adActionTotal++;
       scheduleSave();
