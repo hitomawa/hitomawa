@@ -1852,7 +1852,7 @@
   }
 
   // 同じ絵柄をまとめるための指紋（16×16に縮小した色の並び）
-  const SAME_CARD_DIFF = 25;          // この値より小さければ同じカードとみなす（0〜255）
+  const SAME_CARD_DIFF = 20;          // この値より小さければ同じカードとみなす（0〜255）
   function imageSignature(dataUrl){
     return new Promise(function(res){
       const im = new Image();
