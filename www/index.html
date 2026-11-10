@@ -371,6 +371,16 @@
   .viewer-item{display:flex; flex-direction:column; align-items:center; gap:3px;}
   .viewer-order{font-size:9px; color:var(--muted); font-weight:600;}
   .viewer-grid .card.selected{outline:3px solid var(--accent); outline-offset:1px; position:relative; z-index:2;}
+  .deckimg-box{width:min(94vw, 420px);}
+  .deckimg-preview{position:relative; line-height:0; border-radius:var(--radius-m); overflow:hidden; border:1px solid var(--line);}
+  .deckimg-preview img{width:100%; height:auto; display:block;}
+  .deckimg-lines{position:absolute; inset:0; pointer-events:none;}
+  .deckimg-v{position:absolute; top:0; bottom:0; width:0; border-left:1.5px dashed var(--accent-deep);}
+  .deckimg-h{position:absolute; left:0; right:0; height:0; border-top:1.5px dashed var(--accent-deep);}
+  .deckimg-info{font-size:11px; font-weight:800; color:var(--ink); margin:10px 0 2px;}
+  .deckimg-row{display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px; font-size:12px; font-weight:700;}
+  .deckimg-row span{min-width:124px; text-align:left; color:var(--ink-soft);}
+  .deckimg-row b{min-width:26px; font-size:14px;}
   .viewer-wide-btn{display:block; width:100%; margin-top:10px;}
   .viewer-close-btn{
     background:var(--accent); color:var(--accent-ink);
@@ -612,12 +622,14 @@
     <div class="build-scroll">
       <div class="build-section-head">
         <span>メインデッキ</span>
+        <button class="mini-btn section-add-btn" id="btnDeckImage">＋ デッキ画像</button>
         <button class="mini-btn section-add-btn" id="btnAddMain">＋ 画像を追加</button>
       </div>
       <div class="lib-grid" id="libGrid"></div>
 
       <div class="build-section-head" style="margin-top:18px;">
         <span>追加デッキ（任意）</span>
+        <button class="mini-btn section-add-btn" id="btnDeckImageExtra">＋ デッキ画像</button>
         <button class="mini-btn section-add-btn" id="btnAddExtra">＋ 画像を追加</button>
       </div>
       <div class="lib-grid" id="extraGrid"></div>
@@ -695,6 +707,7 @@
 </div>
 
 <input type="file" id="fileInput" accept="image/*" multiple hidden>
+<input type="file" id="deckImgInput" accept="image/*" hidden>
 
 <script>
 (function(){
@@ -863,7 +876,7 @@
   }
   const field = $('field'), handRow = $('handRow'), deckVisual = $('deckVisual'),
         handZone = $('handZone'),
-        emptyHint = $('emptyHint'), fileInput = $('fileInput'),
+        emptyHint = $('emptyHint'), fileInput = $('fileInput'), deckImgInput = $('deckImgInput'),
         screenBuild = $('screenBuild'), screenPlay = $('screenPlay'), screenSettings = $('screenSettings'),
         screenTitleView = $('screenTitleView'), screenDeckSelect = $('screenDeckSelect'),
         screenHowto = $('screenHowto'),
@@ -1729,6 +1742,323 @@
   $('btnBuildBack').onclick = ()=> goToScreen(buildReturnTo);
   $('btnAddMain').onclick = ()=>{ addTarget = 'main'; fileInput.click(); };
   $('btnAddExtra').onclick = ()=>{ addTarget = 'extra'; fileInput.click(); };
+
+  // ===== デッキリスト画像の読み込み =====
+  // カードが格子状に並んだ1枚の画像を、カード1枚ずつに切り分けて登録する。
+  const CARD_ASPECT = 63/88;          // 一般的なカードの縦横比
+  let deckImgTarget = 'main';
+
+  // 画像を解析して「何列×何行」かを推定する。
+  // カードの境目には輪郭の線が出るので、その強さが規則正しく現れる間隔を探す。
+  function detectGrid(img){
+    const AW = Math.min(480, img.width);
+    const scale = AW / img.width;
+    const AH = Math.max(1, Math.round(img.height * scale));
+    const cv = document.createElement('canvas');
+    cv.width = AW; cv.height = AH;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(img, 0, 0, AW, AH);
+    let data;
+    try{ data = ctx.getImageData(0, 0, AW, AH).data; }
+    catch(e){ return guessGridByAspect(img.width, img.height); }
+
+    const g = new Float32Array(AW * AH);
+    for(let i = 0, p = 0; i < g.length; i++, p += 4){
+      g[i] = data[p] * 0.299 + data[p+1] * 0.587 + data[p+2] * 0.114;
+    }
+    const colEdge = new Float32Array(AW), rowEdge = new Float32Array(AH);
+    for(let y = 0; y < AH; y++){
+      for(let x = 0; x < AW - 1; x++) colEdge[x] += Math.abs(g[y*AW + x + 1] - g[y*AW + x]);
+    }
+    for(let y = 0; y < AH - 1; y++){
+      for(let x = 0; x < AW; x++) rowEdge[y] += Math.abs(g[(y+1)*AW + x] - g[y*AW + x]);
+    }
+
+    const bestCount = function(profile, len, maxN){
+      let total = 0;
+      for(let i = 0; i < len; i++) total += profile[i];
+      const avg = total / len;
+      if(avg <= 0) return 1;
+      const scores = [];
+      for(let n = 2; n <= maxN; n++){
+        let sum = 0;
+        for(let k = 1; k < n; k++){
+          const pos = Math.round(k * len / n);
+          let peak = 0;
+          for(let d = -2; d <= 2; d++){
+            const q = pos + d;
+            if(q >= 0 && q < len && profile[q] > peak) peak = profile[q];
+          }
+          sum += peak;
+        }
+        scores.push({ n: n, score: (sum / (n - 1)) / avg });
+      }
+      if(!scores.length) return 1;
+      const top = scores.reduce(function(a, b){ return b.score > a.score ? b : a; });
+      // 約数（4列と8列など）も同程度の得点になるため、高得点のうち最も細かい分割を採る
+      const good = scores.filter(function(s){ return s.score >= top.score * 0.9; });
+      return good.reduce(function(a, b){ return b.n > a.n ? b : a; }).n;
+    };
+
+    const cols = bestCount(colEdge, AW, 14);
+    const rows = bestCount(rowEdge, AH, 12);
+    const ar = (img.width / cols) / (img.height / rows);
+    if(cols < 2 || rows < 2 || ar < CARD_ASPECT * 0.6 || ar > CARD_ASPECT * 1.6){
+      return guessGridByAspect(img.width, img.height);
+    }
+    return { cols: cols, rows: rows };
+  }
+
+  // 予備の推定：1マスがカードの縦横比に最も近くなる組み合わせを選ぶ
+  function guessGridByAspect(w, h){
+    let fit = { cols: 8, rows: 5, diff: Infinity };
+    for(let c = 2; c <= 12; c++){
+      for(let r = 2; r <= 10; r++){
+        if(c * r < 12 || c * r > 80) continue;
+        const diff = Math.abs((w / c) / (h / r) - CARD_ASPECT) / CARD_ASPECT
+                   + Math.abs(c * r - 40) * 0.004;
+        if(diff < fit.diff) fit = { cols: c, rows: r, diff: diff };
+      }
+    }
+    return { cols: fit.cols, rows: fit.rows };
+  }
+
+  // 画像を cols×rows に切り分けて、1枚ずつのデータURLにする
+  function sliceDeckImage(img, cols, rows){
+    const out = [];
+    const cw = img.width / cols, ch = img.height / rows;
+    const MAXW = 300;
+    const sc = Math.min(1, MAXW / cw);
+    const ow = Math.max(1, Math.round(cw * sc)), oh = Math.max(1, Math.round(ch * sc));
+    const cv = document.createElement('canvas');
+    cv.width = ow; cv.height = oh;
+    const ctx = cv.getContext('2d');
+    for(let r = 0; r < rows; r++){
+      for(let c = 0; c < cols; c++){
+        ctx.clearRect(0, 0, ow, oh);
+        ctx.drawImage(img, Math.round(c * cw), Math.round(r * ch), Math.round(cw), Math.round(ch), 0, 0, ow, oh);
+        out.push(cv.toDataURL('image/jpeg', 0.8));
+      }
+    }
+    return out;
+  }
+
+  // 同じ絵柄をまとめるための指紋（16×16に縮小した色の並び）
+  const SAME_CARD_DIFF = 25;          // この値より小さければ同じカードとみなす（0〜255）
+  function imageSignature(dataUrl){
+    return new Promise(function(res){
+      const im = new Image();
+      im.onload = function(){
+        try{
+          const n = 16;
+          const cv = document.createElement('canvas');
+          cv.width = n; cv.height = n;
+          const cx = cv.getContext('2d');
+          cx.drawImage(im, 0, 0, n, n);
+          const d = cx.getImageData(0, 0, n, n).data;
+          const sig = new Float32Array(n * n * 3);
+          for(let i = 0, p = 0, q = 0; i < n * n; i++, p += 4, q += 3){
+            sig[q] = d[p]; sig[q+1] = d[p+1]; sig[q+2] = d[p+2];
+          }
+          res(sig);
+        }catch(e){ res(null); }
+      };
+      im.onerror = function(){ res(null); };
+      im.src = dataUrl;
+    });
+  }
+
+  // 2枚の絵柄の違い（0に近いほど同じ絵柄）
+  function signatureDiff(a, b){
+    let sum = 0;
+    for(let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
+    return sum / a.length;
+  }
+
+  // 背景だけのマス（カードが写っていない余り）を判定する
+  function isBlankCell(dataUrl){
+    return new Promise(function(res){
+      const im = new Image();
+      im.onload = function(){
+        try{
+          const n = 10;
+          const cv = document.createElement('canvas');
+          cv.width = n; cv.height = n;
+          const cx = cv.getContext('2d');
+          cx.drawImage(im, 0, 0, n, n);
+          const d = cx.getImageData(0, 0, n, n).data;
+          let min = 255, max = 0;
+          for(let i = 0, p = 0; i < n*n; i++, p += 4){
+            const v = d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114;
+            if(v < min) min = v;
+            if(v > max) max = v;
+          }
+          res((max - min) < 12);
+        }catch(e){ res(false); }
+      };
+      im.onerror = function(){ res(false); };
+      im.src = dataUrl;
+    });
+  }
+
+  // 切り出した画像をライブラリに登録する（同じ絵柄は枚数としてまとめる）
+  async function addSlicedCards(slices, targetArr, merge){
+    const kept = [];
+    for(let i = 0; i < slices.length; i++){
+      const blank = await isBlankCell(slices[i]);
+      if(!blank) kept.push(slices[i]);
+    }
+    if(!kept.length) return 0;
+    if(!merge){
+      kept.forEach(function(img){ targetArr.push({ id: newLibId(), img: img, count: 1 }); });
+      return kept.length;
+    }
+    const groups = [];
+    for(let i = 0; i < kept.length; i++){
+      const sig = await imageSignature(kept[i]);
+      let hit = null, bestDiff = Infinity;
+      if(sig){
+        for(let j = 0; j < groups.length; j++){
+          if(!groups[j].sig) continue;
+          const diff = signatureDiff(groups[j].sig, sig);
+          if(diff < bestDiff){ bestDiff = diff; hit = groups[j]; }
+        }
+      }
+      if(hit && bestDiff <= SAME_CARD_DIFF) hit.count++;
+      else groups.push({ sig: sig, img: kept[i], count: 1 });
+    }
+    groups.forEach(function(gp){ targetArr.push({ id: newLibId(), img: gp.img, count: gp.count }); });
+    return kept.length;
+  }
+
+  // 読み込み前の確認画面（分割の仕方をその場で調整できる）
+  function showDeckImageDialog(dataUrl){
+    const img = new Image();
+    img.onload = function(){
+      const guess = detectGrid(img);
+      let cols = guess.cols, rows = guess.rows, merge = true;
+
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+      const box = document.createElement('div');
+      box.className = 'confirm-box deckimg-box';
+      const p = document.createElement('p');
+      p.textContent = 'この画像をカードごとに切り分けて読み込みます。\n線がカードの境目に合っているか確認してください。';
+
+      const prev = document.createElement('div');
+      prev.className = 'deckimg-preview';
+      const pimg = document.createElement('img');
+      pimg.src = dataUrl;
+      const lines = document.createElement('div');
+      lines.className = 'deckimg-lines';
+      prev.appendChild(pimg);
+      prev.appendChild(lines);
+
+      const info = document.createElement('div');
+      info.className = 'deckimg-info';
+
+      const drawLines = function(){
+        lines.innerHTML = '';
+        for(let c = 1; c < cols; c++){
+          const v = document.createElement('div');
+          v.className = 'deckimg-v';
+          v.style.left = (c / cols * 100) + '%';
+          lines.appendChild(v);
+        }
+        for(let r = 1; r < rows; r++){
+          const h = document.createElement('div');
+          h.className = 'deckimg-h';
+          h.style.top = (r / rows * 100) + '%';
+          lines.appendChild(h);
+        }
+        info.textContent = cols + '列 × ' + rows + '行 ＝ ' + (cols * rows) + '枚';
+      };
+
+      const mkRow = function(label, get, set, min, max){
+        const row = document.createElement('div');
+        row.className = 'deckimg-row';
+        const name = document.createElement('span');
+        name.textContent = label;
+        const val = document.createElement('b');
+        const sync = function(){ val.textContent = get(); drawLines(); };
+        const minus = document.createElement('button');
+        minus.className = 'all-btn';
+        minus.textContent = '－';
+        minus.onclick = function(){ if(get() > min){ set(get() - 1); sync(); } };
+        const plus = document.createElement('button');
+        plus.className = 'all-btn';
+        plus.textContent = '＋';
+        plus.onclick = function(){ if(get() < max){ set(get() + 1); sync(); } };
+        val.textContent = get();
+        row.appendChild(name); row.appendChild(minus); row.appendChild(val); row.appendChild(plus);
+        return row;
+      };
+
+      const mergeRow = document.createElement('div');
+      mergeRow.className = 'deckimg-row';
+      const mergeLabel = document.createElement('span');
+      mergeLabel.textContent = '同じカードをまとめる';
+      const mergeBtn = document.createElement('button');
+      mergeBtn.className = 'mini-btn';
+      mergeBtn.textContent = 'オン';
+      mergeBtn.style.background = 'var(--accent)';
+      mergeBtn.onclick = function(){
+        merge = !merge;
+        mergeBtn.textContent = merge ? 'オン' : 'オフ';
+        mergeBtn.style.background = merge ? 'var(--accent)' : '';
+      };
+      mergeRow.appendChild(mergeLabel);
+      mergeRow.appendChild(mergeBtn);
+
+      const actions = document.createElement('div');
+      actions.className = 'confirm-actions';
+      const cancel = document.createElement('button');
+      cancel.className = 'confirm-cancel';
+      cancel.textContent = 'キャンセル';
+      cancel.onclick = function(){ overlay.remove(); };
+      const ok = document.createElement('button');
+      ok.className = 'confirm-ok';
+      ok.textContent = '読み込む';
+      ok.onclick = function(){
+        ok.disabled = true;
+        ok.textContent = '読み込み中…';
+        const target = deckImgTarget === 'extra' ? extraLibrary : library;
+        const slices = sliceDeckImage(img, cols, rows);
+        addSlicedCards(slices, target, merge).then(function(n){
+          overlay.remove();
+          renderBuild();
+          showAlert(n + '枚のカードを読み込みました。');
+        });
+      };
+      actions.appendChild(cancel); actions.appendChild(ok);
+
+      box.appendChild(p);
+      box.appendChild(prev);
+      box.appendChild(info);
+      box.appendChild(mkRow('列', function(){ return cols; }, function(v){ cols = v; }, 1, 14));
+      box.appendChild(mkRow('行', function(){ return rows; }, function(v){ rows = v; }, 1, 12));
+      box.appendChild(mergeRow);
+      box.appendChild(actions);
+      overlay.appendChild(box);
+      overlay.onclick = function(e){ if(e.target === overlay) overlay.remove(); };
+      document.body.appendChild(overlay);
+      drawLines();
+    };
+    img.onerror = function(){ showAlert('画像を読み込めませんでした。'); };
+    img.src = dataUrl;
+  }
+
+  $('btnDeckImage').onclick = function(){ deckImgTarget = 'main'; deckImgInput.click(); };
+  $('btnDeckImageExtra').onclick = function(){ deckImgTarget = 'extra'; deckImgInput.click(); };
+  deckImgInput.onchange = function(e){
+    const f = e.target.files[0];
+    deckImgInput.value = '';
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = function(){ showDeckImageDialog(r.result); };
+    r.readAsDataURL(f);
+  };
+
   fileInput.onchange = (e)=>{
     if(e.target.files.length) readFilesToLibrary(e.target.files, addTarget==='extra' ? extraLibrary : library);
     fileInput.value='';
